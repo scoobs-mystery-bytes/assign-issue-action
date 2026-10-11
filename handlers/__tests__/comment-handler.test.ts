@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from 'bun:test'
 import type { ActionConfig } from '../../core'
 
 const outputs = new Map<string, unknown>()
@@ -29,6 +37,7 @@ const payload = {
 
 mock.module('@actions/core', () => ({
   info: mock(() => {}),
+  setSecret: mock(() => {}),
   warning: mock(() => {}),
   setOutput: (name: string, value: unknown): void => {
     outputs.set(name, value)
@@ -54,11 +63,15 @@ function expectNoWrites(): void {
 }
 
 describe('CommentHandler approval mode', () => {
+  afterEach(() => {
+    mock.restore()
+  })
   beforeEach(() => {
     outputs.clear()
     request.mockClear()
     config = {
       requireApproval: true,
+      discordWebhookUrl: '',
       enableAutoSuggestion: true,
       selfAssignCmd: '/assign-me',
       selfUnassignCmd: '/unassign-me',
@@ -173,6 +186,9 @@ describe('CommentHandler approval mode', () => {
   ]
   for (const [name, setup] of excluded) {
     it(`does not emit a request or write for ${name}`, async () => {
+      const send = spyOn(globalThis, 'fetch')
+      config.discordWebhookUrl =
+        'https://discord.com/api/webhooks/123/test-token'
       setup()
       await new CommentHandler().handle_issue_comment()
       expect(outputs.get('assignment_requested')).toBe('no')
@@ -185,6 +201,8 @@ describe('CommentHandler approval mode', () => {
         expect(outputs.get(key)).toBe('')
       }
       expectNoWrites()
+      expect(send).not.toHaveBeenCalled()
+      expect(outputs.get('discord_notified')).toBe('no')
     })
   }
 
@@ -196,9 +214,49 @@ describe('CommentHandler approval mode', () => {
     expectNoWrites()
   })
 
+  it('sends an eligible request to Discord when configured', async () => {
+    const send = spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{}'),
+    )
+    config.discordWebhookUrl = 'https://discord.com/api/webhooks/123/test-token'
+    await new CommentHandler().handle_issue_comment()
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(outputs.get('discord_notified')).toBe('yes')
+    expect(outputs.get('assignment_requested')).toBe('yes')
+    expect(outputs.get('assigned')).toBe('no')
+    const body = JSON.parse(String(send.mock.calls[0][1]?.body))
+    expect(body.embeds[0].fields[0].value).toBe('@contributor')
+    expect(body.embeds[0].url).toBe(payload.comment.html_url)
+    expectNoWrites()
+  })
+
+  it('retains request outputs and fails when Discord rejects delivery', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{}', { status: 429 }),
+    )
+    config.discordWebhookUrl = 'https://discord.com/api/webhooks/123/test-token'
+    await expect(new CommentHandler().handle_issue_comment()).rejects.toThrow(
+      'HTTP 429',
+    )
+    expect(outputs.get('assignment_requested')).toBe('yes')
+    expect(outputs.get('requester')).toBe('contributor')
+    expect(outputs.get('discord_notified')).toBe('no')
+    expectNoWrites()
+  })
+
+  it('does not send when the webhook is empty', async () => {
+    const send = spyOn(globalThis, 'fetch')
+    await new CommentHandler().handle_issue_comment()
+    expect(send).not.toHaveBeenCalled()
+    expect(outputs.get('discord_notified')).toBe('no')
+  })
+
   it('still assigns when approval mode is disabled', async () => {
+    const send = spyOn(globalThis, 'fetch')
+    config.discordWebhookUrl = 'https://discord.com/api/webhooks/123/test-token'
     config.requireApproval = false
     await new CommentHandler().handle_issue_comment()
+    expect(send).not.toHaveBeenCalled()
     expect(outputs.get('assigned')).toBe('yes')
     expect(outputs.get('assignment_requested')).toBe('no')
     expect(
@@ -207,9 +265,12 @@ describe('CommentHandler approval mode', () => {
   })
 
   it('preserves authorized maintainer assignments', async () => {
+    const send = spyOn(globalThis, 'fetch')
+    config.discordWebhookUrl = 'https://discord.com/api/webhooks/123/test-token'
     payload.comment.user.login = 'maintainer'
     payload.comment.body = '/assign @contributor'
     await new CommentHandler().handle_issue_comment()
+    expect(send).not.toHaveBeenCalled()
     expect(outputs.get('assigned')).toBe('yes')
     expect(outputs.get('assignment_requested')).toBe('no')
   })

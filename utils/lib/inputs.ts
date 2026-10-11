@@ -8,6 +8,7 @@ export enum INPUTS {
   MAINTAINERS = 'maintainers',
   ENABLE_AUTO_SUGGESTION = 'enable_auto_suggestion',
   REQUIRE_APPROVAL = 'require_approval',
+  DISCORD_WEBHOOK_URL = 'discord_webhook_url',
   ALLOW_SELF_ASSIGN_AUTHOR = 'allow_self_assign_author',
 
   ASSIGNED_LABEL = 'assigned_label',

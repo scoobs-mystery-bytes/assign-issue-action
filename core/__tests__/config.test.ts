@@ -103,6 +103,7 @@ describe('config', () => {
     it('should parse boolean values', () => {
       const config = loadConfig()
 
+      expect(config.discordWebhookUrl).toBe('')
       expect(config.requireApproval).toBe(false)
       expect(config.enableReminder).toBe(true)
       expect(config.blockAssignment).toBe(false)

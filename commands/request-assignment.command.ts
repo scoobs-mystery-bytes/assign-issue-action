@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import { sendDiscordAssignmentRequest } from '../services/discord/assignment-notification'
 import type {
   Command,
   CommandContext,
@@ -47,6 +48,20 @@ export class RequestAssignmentCommand implements Command {
     core.setOutput('comment_id', comment.id)
     core.setOutput('assignment_requested', 'yes')
     core.info(`Assignment requested by @${username} for issue #${issue.number}`)
+
+    if (context.config.discordWebhookUrl) {
+      await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
+        repository: `${context.repoOwner}/${context.repoName}`,
+        issueNumber: Number(issue.number),
+        issueTitle: issue.title ?? '',
+        requester: username,
+        commentUrl: comment.html_url,
+        commentBody: comment.body ?? '',
+        commentId: comment.id,
+      })
+      core.setOutput('discord_notified', 'yes')
+      core.info('Sent assignment request notification to Discord')
+    }
 
     return { success: true, message: 'Assignment requires maintainer approval' }
   }

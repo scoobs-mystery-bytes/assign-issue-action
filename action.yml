@@ -43,6 +43,11 @@ inputs:
       Note: To use team slugs, `github_token` must be a Personal Access Token (PAT) with `read:org` scope.
     default: "" # i.e: 'takanome-dev,octokit,@my-org/core-team'
     required: true
+  discord_webhook_url:
+    description: >
+      Optional Discord incoming webhook URL for eligible assignment requests.
+      Requires require_approval to be true. Pass this through an Actions secret.
+    default: ""
   require_approval:
     description: >
       Emit assignment request outputs for self-assignment commands and recognized
@@ -360,6 +365,8 @@ inputs:
       </details>
 
 outputs:
+  discord_notified:
+    description: Whether an assignment request notification was sent to Discord (yes/no)
   assignment_requested:
     description: Whether an eligible request requires approval (yes/no)
   requester:

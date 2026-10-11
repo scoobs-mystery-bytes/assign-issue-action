@@ -22,6 +22,7 @@ const defaultConfig: ActionConfig = {
   maintainers: [],
   enableAutoSuggestion: false,
   requireApproval: false,
+  discordWebhookUrl: '',
   allowSelfAssignAuthor: true,
   blockAssignment: false,
   maxAssignments: 3,

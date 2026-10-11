@@ -75,6 +75,7 @@ export default class CommentHandler {
       `🤖 Checking commands in the issue (#${this.issue?.number}) comments"`,
     )
 
+    core.setOutput('discord_notified', 'no')
     core.setOutput('assignment_requested', 'no')
     core.setOutput('requester', '')
     core.setOutput('issue_number', '')

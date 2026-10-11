@@ -33081,7 +33081,7 @@ function exportVariable(name, val) {
  * ```
  */
 function core_setSecret(secret) {
-    issueCommand('add-mask', {}, secret);
+    command_issueCommand('add-mask', {}, secret);
 }
 /**
  * Prepends inputPath to the PATH (for this action and future actions)
@@ -42227,6 +42227,60 @@ var UnassignUserCommand = class {
 	}
 };
 //#endregion
+//#region services/discord/assignment-notification.ts
+async function sendDiscordAssignmentRequest(webhookUrl, request) {
+	core_setSecret(webhookUrl);
+	let url;
+	try {
+		url = new URL(webhookUrl);
+	} catch {
+		throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+	}
+	if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.username || url.password || url.port || !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[^/]+\/?$/.test(url.pathname)) throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+	url.searchParams.set("wait", "true");
+	const payload = {
+		content: "Assignment requested — awaiting maintainer approval.",
+		allowed_mentions: { parse: [] },
+		embeds: [{
+			title: `#${request.issueNumber}: ${request.issueTitle}`.slice(0, 256),
+			url: request.commentUrl,
+			author: { name: request.repository.slice(0, 256) },
+			description: request.commentBody.slice(0, 3500),
+			fields: [
+				{
+					name: "Requested by",
+					value: `@${request.requester}`,
+					inline: true
+				},
+				{
+					name: "Status",
+					value: "Awaiting maintainer approval",
+					inline: true
+				},
+				{
+					name: "Original comment",
+					value: `[View request](${request.commentUrl})`
+				}
+			],
+			footer: { text: `Comment ID: ${request.commentId}` },
+			color: 15774258
+		}]
+	};
+	let response;
+	try {
+		response = await fetch(url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+			signal: AbortSignal.timeout(15e3),
+			redirect: "error"
+		});
+	} catch {
+		throw new Error("Discord assignment notification failed: network error or timeout");
+	}
+	if (!response.ok) throw new Error(`Discord assignment notification failed (HTTP ${response.status})`);
+}
+//#endregion
 //#region commands/request-assignment.command.ts
 var RequestAssignmentCommand = class {
 	async execute(context, services) {
@@ -42257,6 +42311,19 @@ var RequestAssignmentCommand = class {
 		setOutput("comment_id", comment.id);
 		setOutput("assignment_requested", "yes");
 		info(`Assignment requested by @${username} for issue #${issue.number}`);
+		if (context.config.discordWebhookUrl) {
+			await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
+				repository: `${context.repoOwner}/${context.repoName}`,
+				issueNumber: Number(issue.number),
+				issueTitle: issue.title ?? "",
+				requester: username,
+				commentUrl: comment.html_url,
+				commentBody: comment.body ?? "",
+				commentId: comment.id
+			});
+			setOutput("discord_notified", "yes");
+			info("Sent assignment request notification to Discord");
+		}
 		return {
 			success: true,
 			message: "Assignment requires maintainer approval"
@@ -42309,6 +42376,7 @@ function loadConfig() {
 		maintainers: maintainersInput ? maintainersInput.split(",").map((m) => m.trim()).filter(Boolean) : [],
 		enableAutoSuggestion: getBooleanInput("enable_auto_suggestion"),
 		requireApproval: getBooleanInput("require_approval"),
+		discordWebhookUrl: getInput("discord_webhook_url"),
 		allowSelfAssignAuthor: getInput("allow_self_assign_author") !== "false",
 		blockAssignment: getInput("block_assignment") === "true",
 		maxAssignments: Number.parseInt(getInput("max_assignments") || "3", 10),
@@ -42795,6 +42863,7 @@ var CommentHandler = class {
 	}
 	async handle_issue_comment() {
 		info(`🤖 Checking commands in the issue (#${this.issue?.number}) comments"`);
+		setOutput("discord_notified", "no");
 		setOutput("assignment_requested", "no");
 		setOutput("requester", "");
 		setOutput("issue_number", "");

@@ -83,6 +83,7 @@ Various inputs are defined in action.yml to let you configure the action:
 | `assign_user_cmd`                 | The command that assigns the user to the issue                                                                                                                                                              | `/assign @<user>`                                                                |
 | `unassign_user_cmd`               | The command that unassigns the user from the issue, if they are assigned.                                                                                                                                   | `/unassign @<user>`                                                              |
 | `maintainers`                     | A list of maintainers authorized to use `/assign` and `/unassign` commands. List the usernames with comma separated (i.e: 'takanome-dev,octokit'). If not set, the usage of those commands will be ignored. | `''`                                                                             |
+| `discord_webhook_url` | Optional Discord webhook URL for eligible requests when approval mode is enabled. Supply an Actions secret. | `''` |
 | `require_approval` | Emit eligible contributor requests for approval instead of assigning or posting suggestions. Maintainer commands and scheduled unassignments are unaffected. | `false` |
 | `enable_auto_suggestion`          | A boolean input that controls whether the action should automatically check user comments for phrases signaling interest in issue assignment. Set to true by default.                                       | **`true`**                                                                       |
 | `allow_self_assign_author`        | Whether to allow the issue author to self-assign their own issue. Set to `false` to prevent users from creating issues and immediately assigning themselves, giving maintainers control over the roadmap.   | `true`                                                                           |
@@ -162,12 +163,62 @@ issue-read permission; maintainer mutation commands need issue-write permission.
 Use `comment_id` to deduplicate edited comments in the approval integration, and
 recheck issue state and assignees before assigning after approval.
 
+## Discord assignment request notifications
+
+Set `discord_webhook_url` alongside `require_approval: "true"` to notify a Discord
+channel when an eligible contributor requests assignment. The message says
+**Assignment requested — awaiting maintainer approval** and includes the repository,
+issue title and number, requester, original comment excerpt, and a link to review it.
+It does not assign the contributor or provide interactive approval buttons.
+
+1. Create an incoming webhook in your Discord channel's integration settings.
+2. Store its URL as the repository Actions secret `DISCORD_ASSIGNMENT_WEBHOOK_URL`.
+3. Call the action from a workflow in the repository containing the issues:
+
+```yaml
+name: Notify assignment requests
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  issues: read
+jobs:
+  notify:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: scoobs-mystery-bytes/assign-issue-action@<commit-sha>
+        with:
+          require_approval: "true"
+          enable_auto_suggestion: "true"
+          discord_webhook_url: ${{ secrets.DISCORD_ASSIGNMENT_WEBHOOK_URL }}
+```
+
+Replace `<commit-sha>` with a built commit from this fork. An empty webhook input
+skips notification and retains request outputs. Requests rejected by eligibility
+checks, unrelated comments, and maintainer commands do not send notifications.
+Only HTTPS `discord.com/api/webhooks/...` URLs (including versioned API paths)
+are accepted. A `thread_id` query parameter can target an existing Discord thread.
+
+The webhook URL is masked in action logs, and mentions are disabled in messages.
+Discord delivery errors fail the action with a status or sanitized network error;
+`discord_notified` remains `no`, while the request outputs remain available.
+Requests time out after 15 seconds. Delivery is confirmed using Discord's
+[`wait=true` option](https://docs.discord.com/developers/resources/webhook#execute-webhook).
+
+Each eligible comment sends one message per workflow run. Rerunning the workflow,
+repeating the request, or enabling edited-comment events can send duplicates;
+this action does not persist notification state or automatically retry delivery.
+Interactive approval and assignment from Discord require a separately hosted
+Discord application handler.
+
 ## Outputs
 
 The action provides the following outputs that can be used in subsequent workflow steps:
 
 | Name                | Description                                                                      |
 | ------------------- | -------------------------------------------------------------------------------- |
+| `discord_notified` | 'yes' after successful Discord delivery, otherwise 'no' on issue comments |
 | `assignment_requested` | 'yes' for an eligible request in approval mode, otherwise 'no' on issue comments |
 | `requester` | Requester's GitHub login, otherwise empty |
 | `issue_number` | Requested issue number, otherwise empty |

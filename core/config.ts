@@ -22,6 +22,7 @@ export interface ActionConfig {
   maintainers: string[]
   enableAutoSuggestion: boolean
   requireApproval: boolean
+  discordWebhookUrl: string
   allowSelfAssignAuthor: boolean
   blockAssignment: boolean
 
@@ -133,6 +134,7 @@ export function loadConfig(): ActionConfig {
       : [],
     enableAutoSuggestion: core.getBooleanInput(INPUTS.ENABLE_AUTO_SUGGESTION),
     requireApproval: core.getBooleanInput(INPUTS.REQUIRE_APPROVAL),
+    discordWebhookUrl: core.getInput(INPUTS.DISCORD_WEBHOOK_URL),
     allowSelfAssignAuthor:
       core.getInput(INPUTS.ALLOW_SELF_ASSIGN_AUTHOR) !== 'false',
     blockAssignment: core.getInput('block_assignment') === 'true',
