@@ -1,0 +1,37 @@
+README.md
+  s_c62ea6f41c5c82::t_06620b811a9cc5 86,117-164,171-175
+action.yml
+  s_c62ea6f41c5c82::t_b4c379135e5532 46-51,363-372
+commands/request-assignment.command.ts
+  s_c62ea6f41c5c82::t_5e491d2c1960ff 1-53
+core/__tests__/config.test.ts
+  s_c62ea6f41c5c82::t_1a541057ba749d 47,106,112-117
+core/config.ts
+  s_c62ea6f41c5c82::t_268490478cb3ec 24,135
+dist/index.mjs
+  s_c62ea6f41c5c82::t_7014d00932e03c 42230-42266,42311,42798-42806,42809-42812,42814,42834
+handlers/__tests__/comment-handler.test.ts
+  s_c62ea6f41c5c82::t_85baceb202b651 1-223
+handlers/comment-handler.ts
+  s_c62ea6f41c5c82::t_cfc1b0b6c7d079 17,78-90,99-103,111,162-169
+services/assignment/__tests__/assignment-validator.test.ts
+  s_c62ea6f41c5c82::t_7322c8259b5cb3 24
+utils/lib/inputs.ts
+  s_c62ea6f41c5c82::t_41b57bdb167aad 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "056c432e193e573653283948b9763ab0950e02ad",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
