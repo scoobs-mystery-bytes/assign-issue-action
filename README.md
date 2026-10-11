@@ -83,6 +83,7 @@ Various inputs are defined in action.yml to let you configure the action:
 | `assign_user_cmd`                 | The command that assigns the user to the issue                                                                                                                                                              | `/assign @<user>`                                                                |
 | `unassign_user_cmd`               | The command that unassigns the user from the issue, if they are assigned.                                                                                                                                   | `/unassign @<user>`                                                              |
 | `maintainers`                     | A list of maintainers authorized to use `/assign` and `/unassign` commands. List the usernames with comma separated (i.e: 'takanome-dev,octokit'). If not set, the usage of those commands will be ignored. | `''`                                                                             |
+| `require_approval` | Emit eligible contributor requests for approval instead of assigning or posting suggestions. Maintainer commands and scheduled unassignments are unaffected. | `false` |
 | `enable_auto_suggestion`          | A boolean input that controls whether the action should automatically check user comments for phrases signaling interest in issue assignment. Set to true by default.                                       | **`true`**                                                                       |
 | `allow_self_assign_author`        | Whether to allow the issue author to self-assign their own issue. Set to `false` to prevent users from creating issues and immediately assigning themselves, giving maintainers control over the roadmap.   | `true`                                                                           |
 | `assigned_label`                  | A label that is added to issues when they're assigned, to track which issues were assigned by this action.                                                                                                  | `📍 Assigned`                                                                    |
@@ -113,12 +114,65 @@ Various inputs are defined in action.yml to let you configure the action:
 
 **Note:** The old input names (e.g., `assigned_comment`, `unassigned_comment`, etc.) are still supported for backward compatibility but are deprecated. Please migrate to the new `_text` suffix names. A deprecation warning will be shown in the action logs if you use the old names.
 
+## Approval mode
+
+Set `require_approval: "true"` to turn `/assign-me` comments and recognized
+contribution phrases into requests for maintainer review. Phrase detection uses
+case-insensitive substring matching against `CONTRIBUTION_PHRASES` in
+`commands/command-parser.ts`; it does not understand arbitrary wording or negation.
+Keep `enable_auto_suggestion: "true"` to detect these phrases.
+
+Approval mode applies the existing assignment eligibility checks, including
+closed or assigned issues, required labels, ignored users, author restrictions,
+reassignment blocks, and assignment limits. Pull request comments and bot comments
+are ignored. Eligible requests emit outputs without assigning, changing labels,
+or posting a comment. Requests rejected by these checks emit no request details.
+Maintainer `/assign` and `/unassign` commands and scheduled unassignments retain
+their existing behavior. Approval mode does not store pending requests or perform
+approval; a subsequent workflow step or external service must handle that.
+
+```yaml
+name: Review assignment requests
+on:
+  issue_comment:
+    types: [created, edited]
+permissions:
+  issues: read
+jobs:
+  detect:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: scoobs-mystery-bytes/assign-issue-action@<commit-sha>
+        id: request
+        with:
+          require_approval: "true"
+          enable_auto_suggestion: "true"
+      - if: steps.request.outputs.assignment_requested == 'yes'
+        env:
+          REQUESTER: ${{ steps.request.outputs.requester }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
+          COMMENT_URL: ${{ steps.request.outputs.comment_url }}
+        run: |
+          printf 'Review assignment of issue %s to %s: %s\n' "$ISSUE_NUMBER" "$REQUESTER" "$COMMENT_URL"
+```
+
+Replace `<commit-sha>` with a built commit from this fork. Detection needs only
+issue-read permission; maintainer mutation commands need issue-write permission.
+Use `comment_id` to deduplicate edited comments in the approval integration, and
+recheck issue state and assignees before assigning after approval.
+
 ## Outputs
 
 The action provides the following outputs that can be used in subsequent workflow steps:
 
 | Name                | Description                                                                      |
 | ------------------- | -------------------------------------------------------------------------------- |
+| `assignment_requested` | 'yes' for an eligible request in approval mode, otherwise 'no' on issue comments |
+| `requester` | Requester's GitHub login, otherwise empty |
+| `issue_number` | Requested issue number, otherwise empty |
+| `comment_url` | Original request comment URL, otherwise empty |
+| `comment_id` | Original comment ID for deduplication, otherwise empty |
 | `assigned`          | Returns 'yes' if an issue was successfully assigned, 'no' otherwise              |
 | `unassigned`        | Returns 'yes' if an issue was successfully unassigned, 'no' otherwise            |
 | `unassigned_issues` | An array containing the issue numbers that were unassigned during the action run |

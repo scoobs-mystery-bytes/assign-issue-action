@@ -42227,6 +42227,43 @@ var UnassignUserCommand = class {
 	}
 };
 //#endregion
+//#region commands/request-assignment.command.ts
+var RequestAssignmentCommand = class {
+	async execute(context, services) {
+		const { issue, comment } = context;
+		const username = comment?.user?.login;
+		if (!issue || !comment || !username || issue.pull_request || comment.user?.type === "Bot") return {
+			success: false,
+			message: "Not an issue assignment request"
+		};
+		const validation = await services.validator.validateAssignment({
+			number: Number(issue.number),
+			state: issue.state,
+			assignee: issue.assignee,
+			assignees: issue.assignees,
+			user: issue.user,
+			labels: issue.labels
+		}, username);
+		if (!validation.valid) {
+			info(`Skipping assignment request: ${validation.reason}`);
+			return {
+				success: false,
+				message: validation.reason
+			};
+		}
+		setOutput("requester", username);
+		setOutput("issue_number", issue.number);
+		setOutput("comment_url", comment.html_url);
+		setOutput("comment_id", comment.id);
+		setOutput("assignment_requested", "yes");
+		info(`Assignment requested by @${username} for issue #${issue.number}`);
+		return {
+			success: true,
+			message: "Assignment requires maintainer approval"
+		};
+	}
+};
+//#endregion
 //#region core/config.ts
 let cachedConfig = null;
 function getConfig() {
@@ -42271,6 +42308,7 @@ function loadConfig() {
 		daysUntilUnassign: Number(getInput("days_until_unassign")) || 14,
 		maintainers: maintainersInput ? maintainersInput.split(",").map((m) => m.trim()).filter(Boolean) : [],
 		enableAutoSuggestion: getBooleanInput("enable_auto_suggestion"),
+		requireApproval: getBooleanInput("require_approval"),
 		allowSelfAssignAuthor: getInput("allow_self_assign_author") !== "false",
 		blockAssignment: getInput("block_assignment") === "true",
 		maxAssignments: Number.parseInt(getInput("max_assignments") || "3", 10),
@@ -42757,11 +42795,23 @@ var CommentHandler = class {
 	}
 	async handle_issue_comment() {
 		info(`🤖 Checking commands in the issue (#${this.issue?.number}) comments"`);
+		setOutput("assignment_requested", "no");
+		setOutput("requester", "");
+		setOutput("issue_number", "");
+		setOutput("comment_url", "");
+		setOutput("comment_id", "");
+		if (this.config.requireApproval) {
+			setOutput("assigned", "no");
+			if (this.issue?.pull_request || this.comment?.user?.type === "Bot") return;
+		}
 		const { requiredLabel } = this.config;
 		if (requiredLabel) {
-			if (!this.issue?.labels?.find((label) => label.name === requiredLabel)) return setFailed(`🚫 Missing required label: "${requiredLabel}" not found in issue #${this.issue?.number}.`);
+			if (!this.issue?.labels?.find((label) => label.name === requiredLabel)) {
+				if (this.config.requireApproval) return info(`Skipping issue without required label: ${requiredLabel}`);
+				return setFailed(`🚫 Missing required label: "${requiredLabel}" not found in issue #${this.issue?.number}.`);
+			}
 		}
-		const rawBody = github_context.payload.comment?.body;
+		const rawBody = this.comment?.body ?? "";
 		const commenterLogin = this.comment?.user?.login;
 		const parsedCommand = this.parser.parse(rawBody, commenterLogin);
 		if (!parsedCommand) return info(`🤖 Ignoring comment: ${github_context.payload.comment?.id} because it does not contain a supported command.`);
@@ -42781,6 +42831,7 @@ var CommentHandler = class {
 		await command.execute(commandContext, this.services);
 	}
 	getCommand(parsedCommand) {
+		if (this.config.requireApproval && (parsedCommand.type === "self_assign" || parsedCommand.type === "auto_suggest")) return new RequestAssignmentCommand();
 		switch (parsedCommand.type) {
 			case "self_assign": return new SelfAssignCommand();
 			case "self_unassign": return new SelfUnassignCommand();

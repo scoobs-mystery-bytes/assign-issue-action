@@ -44,6 +44,7 @@ const mockGetInput = mock((name: string): string => {
 const mockGetBooleanInput = mock((name: string): boolean => {
   const inputs: Record<string, boolean> = {
     enable_auto_suggestion: false,
+    require_approval: false,
   }
   return inputs[name] ?? false
 })
@@ -102,9 +103,16 @@ describe('config', () => {
     it('should parse boolean values', () => {
       const config = loadConfig()
 
+      expect(config.requireApproval).toBe(false)
       expect(config.enableReminder).toBe(true)
       expect(config.blockAssignment).toBe(false)
       expect(config.allowSelfAssignAuthor).toBe(true)
+    })
+
+    it('should enable approval mode when requested', () => {
+      mockGetBooleanInput.mockImplementationOnce(() => false)
+      mockGetBooleanInput.mockImplementationOnce(() => true)
+      expect(loadConfig().requireApproval).toBe(true)
     })
 
     it('should parse reminder days as number', () => {

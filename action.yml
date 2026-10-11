@@ -43,6 +43,12 @@ inputs:
       Note: To use team slugs, `github_token` must be a Personal Access Token (PAT) with `read:org` scope.
     default: "" # i.e: 'takanome-dev,octokit,@my-org/core-team'
     required: true
+  require_approval:
+    description: >
+      Emit assignment request outputs for self-assignment commands and recognized
+      contribution phrases instead of assigning or posting suggestion comments.
+      Maintainer commands and scheduled unassignments are unaffected.
+    default: "false"
   enable_auto_suggestion:
     description: A boolean input that controls whether the action should automatically check user comments for phrases signaling interest in issue assignment. Set to true by default.
     default: "true"
@@ -354,6 +360,16 @@ inputs:
       </details>
 
 outputs:
+  assignment_requested:
+    description: Whether an eligible request requires approval (yes/no)
+  requester:
+    description: GitHub login of the contributor requesting assignment
+  issue_number:
+    description: Issue number for the assignment request
+  comment_url:
+    description: URL of the original assignment request comment
+  comment_id:
+    description: Comment ID for deduplicating assignment requests
   assigned:
     description: Boolean indicating if the issue was assigned (yes/no)
   unassigned:

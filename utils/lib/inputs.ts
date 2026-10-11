@@ -7,6 +7,7 @@ export enum INPUTS {
   GITHUB_TOKEN = 'github_token',
   MAINTAINERS = 'maintainers',
   ENABLE_AUTO_SUGGESTION = 'enable_auto_suggestion',
+  REQUIRE_APPROVAL = 'require_approval',
   ALLOW_SELF_ASSIGN_AUTHOR = 'allow_self_assign_author',
 
   ASSIGNED_LABEL = 'assigned_label',

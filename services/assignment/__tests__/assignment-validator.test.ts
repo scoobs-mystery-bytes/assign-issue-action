@@ -21,6 +21,7 @@ const defaultConfig: ActionConfig = {
   daysUntilUnassign: 14,
   maintainers: [],
   enableAutoSuggestion: false,
+  requireApproval: false,
   allowSelfAssignAuthor: true,
   blockAssignment: false,
   maxAssignments: 3,

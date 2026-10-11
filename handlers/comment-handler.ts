@@ -14,6 +14,7 @@ import {
   SelfUnassignCommand,
   UnassignUserCommand,
 } from '../commands'
+import { RequestAssignmentCommand } from '../commands/request-assignment.command'
 import {
   type ActionConfig,
   createOctokitClient,
@@ -74,6 +75,19 @@ export default class CommentHandler {
       `🤖 Checking commands in the issue (#${this.issue?.number}) comments"`,
     )
 
+    core.setOutput('assignment_requested', 'no')
+    core.setOutput('requester', '')
+    core.setOutput('issue_number', '')
+    core.setOutput('comment_url', '')
+    core.setOutput('comment_id', '')
+
+    if (this.config.requireApproval) {
+      core.setOutput('assigned', 'no')
+      if (this.issue?.pull_request || this.comment?.user?.type === 'Bot') {
+        return
+      }
+    }
+
     // Check required label
     const { requiredLabel } = this.config
     if (requiredLabel) {
@@ -82,6 +96,11 @@ export default class CommentHandler {
       )
 
       if (!hasLabel) {
+        if (this.config.requireApproval) {
+          return core.info(
+            `Skipping issue without required label: ${requiredLabel}`,
+          )
+        }
         return core.setFailed(
           `🚫 Missing required label: "${requiredLabel}" not found in issue #${this.issue?.number}.`,
         )
@@ -89,7 +108,7 @@ export default class CommentHandler {
     }
 
     // Parse command from comment body
-    const rawBody = context.payload.comment?.body as string
+    const rawBody = this.comment?.body ?? ''
     const commenterLogin = this.comment?.user?.login
 
     const parsedCommand = this.parser.parse(rawBody, commenterLogin)
@@ -140,6 +159,14 @@ export default class CommentHandler {
   }
 
   private getCommand(parsedCommand: ParsedCommand): Command | null {
+    if (
+      this.config.requireApproval &&
+      (parsedCommand.type === CommandType.SELF_ASSIGN ||
+        parsedCommand.type === CommandType.AUTO_SUGGEST)
+    ) {
+      return new RequestAssignmentCommand()
+    }
+
     switch (parsedCommand.type) {
       case CommandType.SELF_ASSIGN:
         return new SelfAssignCommand()
