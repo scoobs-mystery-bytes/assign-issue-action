@@ -1,0 +1,41 @@
+README.md
+  s_c62ea6f41c5c82::t_b821d267df13b9 86,166-214,221
+action.yml
+  s_c62ea6f41c5c82::t_0ee6aef3b7d2f2 46-50,368-369
+commands/request-assignment.command.ts
+  s_c62ea6f41c5c82::t_946a2d3212c218 2,52-65
+core/__tests__/config.test.ts
+  s_c62ea6f41c5c82::t_0cea2026624698 106
+core/config.ts
+  s_c62ea6f41c5c82::t_2f456ac922f7fd 25,137
+dist/index.mjs
+  s_c62ea6f41c5c82::t_ecfe26dd54a41e 33084,42230-42283,42314-42326,42379,42866
+handlers/__tests__/comment-handler.test.ts
+  s_c62ea6f41c5c82::t_71e4b829983e8c 1-9,40,66-68,74,189-191,204-205,217-253,255-256,259,268-269,273
+handlers/comment-handler.ts
+  s_c62ea6f41c5c82::t_67591dc323aefd 78
+services/assignment/__tests__/assignment-validator.test.ts
+  s_c62ea6f41c5c82::t_cae4e678b1a69c 25
+services/discord/__tests__/assignment-notification.test.ts
+  s_c62ea6f41c5c82::t_a82928a802803b 1-117
+services/discord/assignment-notification.ts
+  s_c62ea6f41c5c82::t_7719ca57ad297f 1-91
+utils/lib/inputs.ts
+  s_c62ea6f41c5c82::t_1da80dff9aad71 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d76c244578f05fcbdbb0105bd7fda07b2272ee4",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
