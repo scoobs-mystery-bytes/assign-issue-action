@@ -1,0 +1,67 @@
+.gitignore
+  s_c62ea6f41c5c82::t_5b93f26e4df7df 23-27
+README.md
+  s_cc0fe61e714428::t_06ae5aab89a856 212-253
+action.yml
+  s_c62ea6f41c5c82::t_fdf1c78747759e 46-57
+bun.lock
+  s_c62ea6f41c5c82::t_ca4a8359799aec 3,17,26,59-190,215-220,255-258,323-324,331-332,337-338,343-346,351-352,361-364,369-372,383-388,397-398,409-410,415-424,433-434
+commands/request-assignment.command.ts
+  s_c62ea6f41c5c82::t_1f638696ddd3f8 52-74
+core/__tests__/config.test.ts
+  s_c62ea6f41c5c82::t_6f816235a60b05 119-132
+core/config.ts
+  s_c62ea6f41c5c82::t_dcb1bf26816c46 26-29,103-104,142-143,145-148
+discord-handler/README.md
+  s_cc0fe61e714428::t_a10643be8a01bb 1-122
+discord-handler/__tests__/handler.test.ts
+  s_c62ea6f41c5c82::t_6d10b05b010a92 1-315
+discord-handler/handler.ts
+  s_c62ea6f41c5c82::t_49f5ce57b87062 1-347
+discord-handler/tsconfig.json
+  s_c62ea6f41c5c82::t_8ad2f7440825a9 1-12
+discord-handler/worker.ts
+  s_c62ea6f41c5c82::t_a3706fb4db36a9 1-70
+discord-handler/wrangler.jsonc
+  s_c62ea6f41c5c82::t_e381c0b1557d4a 1-21
+dist/index.mjs
+  s_c62ea6f41c5c82::t_1700405a7f4bae 40850-40851,41855,42233-42249,42251,42253-42268,42273-42295,42325,42366,42375-42379,42413,42435,42437-42440
+handlers/__tests__/comment-handler.test.ts
+  s_c62ea6f41c5c82::t_d170af8d42b37f 75-78,221-261
+package.json
+  s_c62ea6f41c5c82::t_34db9ad32f0ba8 18,27-30,59,67-68
+services/assignment/__tests__/assignment-validator.test.ts
+  s_c62ea6f41c5c82::t_b0dc0d05a9916a 26-29
+services/discord/assignment-notification.ts
+  s_c62ea6f41c5c82::t_f94759d146bf62 2,14-19,23,26-40,42-64,70-98,131
+services/discord/button-protocol.ts
+  s_c62ea6f41c5c82::t_46d20ac8e6152a 1-66
+tsconfig.json
+  s_c62ea6f41c5c82::t_7f70b37c832ce4 29-30
+utils/lib/inputs.ts
+  s_c62ea6f41c5c82::t_b6683f1e0a32f2 12-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1f6a0b5cd6be90782616d8ec6559e1c11220613",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    },
+    "s_cc0fe61e714428": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12e47-7de8-7be3-a270-17f14d2138d4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
