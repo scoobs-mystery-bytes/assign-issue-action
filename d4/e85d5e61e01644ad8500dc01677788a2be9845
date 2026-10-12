@@ -1,0 +1,14 @@
+discord-handler/wrangler.jsonc
+  h_a5ff85794783c2 14-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4e85d5e61e01644ad8500dc01677788a2be9845",
+  "prompts": {},
+  "humans": {
+    "h_a5ff85794783c2": {
+      "author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
