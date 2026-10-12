@@ -9,6 +9,10 @@ export enum INPUTS {
   ENABLE_AUTO_SUGGESTION = 'enable_auto_suggestion',
   REQUIRE_APPROVAL = 'require_approval',
   DISCORD_WEBHOOK_URL = 'discord_webhook_url',
+  DISCORD_BUTTONS_ENABLED = 'discord_buttons_enabled',
+  DISCORD_BOT_TOKEN = 'discord_bot_token',
+  DISCORD_CHANNEL_ID = 'discord_channel_id',
+  DISCORD_BUTTON_SECRET = 'discord_button_secret',
   ALLOW_SELF_ASSIGN_AUTHOR = 'allow_self_assign_author',
 
   ASSIGNED_LABEL = 'assigned_label',

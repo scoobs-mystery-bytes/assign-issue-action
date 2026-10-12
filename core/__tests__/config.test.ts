@@ -116,6 +116,20 @@ describe('config', () => {
       expect(loadConfig().requireApproval).toBe(true)
     })
 
+    it('enables approval mode when buttons are enabled', () => {
+      const original = mockGetInput.getMockImplementation()
+      mockGetInput.mockImplementation((name: string) =>
+        name === 'discord_buttons_enabled' ? 'true' : (original?.(name) ?? ''),
+      )
+      try {
+        const config = loadConfig()
+        expect(config.discordButtonsEnabled).toBe(true)
+        expect(config.requireApproval).toBe(true)
+      } finally {
+        if (original) mockGetInput.mockImplementation(original)
+      }
+    })
+
     it('should parse reminder days as number', () => {
       const config = loadConfig()
 

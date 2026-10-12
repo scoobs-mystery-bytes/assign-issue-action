@@ -15,7 +15,7 @@
     "tsdown": "tsdown index.ts --format esm",
     "bundle": "bun run test && bun run tsdown && bun run build",
     "all": "bun run format && bun run lint && bun run bundle",
-    "test": "tsc --noEmit",
+    "test": "tsc --noEmit && tsc --noEmit -p discord-handler/tsconfig.json",
     "tsc:build": "tsc --noEmit",
     "test:unit": "bun test",
     "test:coverage": "bun test --coverage",
@@ -24,7 +24,10 @@
     "test:unassign": "bun scripts/test-action.js unassign",
     "test:help": "bun scripts/test-action.js help",
     "debug:stats": "bun scripts/debug-stats.ts",
-    "debug:stats:curl": "./scripts/debug-stats-curl.sh"
+    "debug:stats:curl": "./scripts/debug-stats-curl.sh",
+    "handler:dev": "wrangler dev --config discord-handler/wrangler.jsonc",
+    "handler:build": "wrangler deploy --dry-run --config discord-handler/wrangler.jsonc --outdir ../handler-build",
+    "handler:deploy": "wrangler deploy --config discord-handler/wrangler.jsonc"
   },
   "homepage": "https://github.com/takanome-dev/assign-issue-action#readme",
   "bugs": "https://github.com/takanome-dev/assign-issue-action/issues",
@@ -53,6 +56,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
+    "@cloudflare/workers-types": "^5.20261011.1",
     "@types/bun": "^1.3.8",
     "@types/js-yaml": "4.0.9",
     "@types/mustache": "4.2.6",
@@ -60,6 +64,7 @@
     "@vercel/ncc": "0.45.0",
     "js-yaml": "4.3.2",
     "tsdown": "^0.23.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "wrangler": "^4.149.0"
   }
 }

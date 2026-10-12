@@ -26,6 +26,7 @@
     "**/*.test.ts",
     "**/__tests__/**",
     "__mocks__",
-    "scripts"
+    "scripts",
+    "discord-handler"
   ]
 }

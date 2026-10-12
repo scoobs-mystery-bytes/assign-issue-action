@@ -23,6 +23,10 @@ export interface ActionConfig {
   enableAutoSuggestion: boolean
   requireApproval: boolean
   discordWebhookUrl: string
+  discordButtonsEnabled: boolean
+  discordBotToken: string
+  discordChannelId: string
+  discordButtonSecret: string
   allowSelfAssignAuthor: boolean
   blockAssignment: boolean
 
@@ -96,6 +100,8 @@ export function loadConfig(): ActionConfig {
     throw new Error('Missing required input: github_token')
   }
 
+  const discordButtonsEnabled =
+    core.getInput(INPUTS.DISCORD_BUTTONS_ENABLED) === 'true'
   const maintainersInput = core.getInput(INPUTS.MAINTAINERS)
   const maxOverallLabelsInput = core.getInput(
     INPUTS.MAX_OVERALL_ASSIGNMENT_LABELS,
@@ -133,8 +139,13 @@ export function loadConfig(): ActionConfig {
           .filter(Boolean)
       : [],
     enableAutoSuggestion: core.getBooleanInput(INPUTS.ENABLE_AUTO_SUGGESTION),
-    requireApproval: core.getBooleanInput(INPUTS.REQUIRE_APPROVAL),
+    requireApproval:
+      core.getBooleanInput(INPUTS.REQUIRE_APPROVAL) || discordButtonsEnabled,
     discordWebhookUrl: core.getInput(INPUTS.DISCORD_WEBHOOK_URL),
+    discordButtonsEnabled,
+    discordBotToken: core.getInput(INPUTS.DISCORD_BOT_TOKEN),
+    discordChannelId: core.getInput(INPUTS.DISCORD_CHANNEL_ID),
+    discordButtonSecret: core.getInput(INPUTS.DISCORD_BUTTON_SECRET),
     allowSelfAssignAuthor:
       core.getInput(INPUTS.ALLOW_SELF_ASSIGN_AUTHOR) !== 'false',
     blockAssignment: core.getInput('block_assignment') === 'true',

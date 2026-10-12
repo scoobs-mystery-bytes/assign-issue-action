@@ -40847,6 +40847,8 @@ function compareLocalAsc(laterDate, earlierDate) {
 // Fallback for modularized imports:
 /* harmony default export */ const date_fns_differenceInDays = ((/* unused pure expression or super */ null && (differenceInDays)));
 
+// EXTERNAL MODULE: external "node:crypto"
+var external_node_crypto_ = __nccwpck_require__(7598);
 // EXTERNAL MODULE: ./node_modules/bottleneck/light.js
 var light = __nccwpck_require__(3251);
 ;// CONCATENATED MODULE: ./node_modules/@octokit/plugin-throttling/dist-bundle/index.js
@@ -41850,6 +41852,7 @@ mustache.Writer = Writer;
 
 
 
+
 //#region commands/assign-user.command.ts
 var AssignUserCommand = class {
 	constructor(parsedCommand) {
@@ -42227,20 +42230,69 @@ var UnassignUserCommand = class {
 	}
 };
 //#endregion
+//#region services/discord/button-protocol.ts
+function signature(action, request, secret) {
+	return (0,external_node_crypto_.createHmac)("sha256", secret).update(JSON.stringify([
+		action,
+		request.repository,
+		request.issueNumber,
+		request.commentId,
+		request.requester,
+		request.commentBody
+	])).digest("base64url");
+}
+function createButtonId(action, request, secret) {
+	const id = `ar1:${action}:${request.issueNumber}:${request.commentId}:${signature(action, request, secret)}`;
+	if (id.length > 100) throw new Error("Assignment button exceeds Discord custom_id limit");
+	return id;
+}
+//#endregion
 //#region services/discord/assignment-notification.ts
-async function sendDiscordAssignmentRequest(webhookUrl, request) {
-	core_setSecret(webhookUrl);
+async function sendDiscordAssignmentRequest(webhookUrl, request, buttons) {
 	let url;
-	try {
-		url = new URL(webhookUrl);
-	} catch {
-		throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+	const headers = { "Content-Type": "application/json" };
+	if (buttons) {
+		if (buttons.botToken) core_setSecret(buttons.botToken);
+		if (buttons.secret) core_setSecret(buttons.secret);
+		if (!buttons.botToken || !/^\d{1,20}$/.test(buttons.channelId) || buttons.secret.length < 32) throw new Error("Button mode requires discord_bot_token, discord_channel_id, and a discord_button_secret of at least 32 characters");
+		url = new URL(`https://discord.com/api/v10/channels/${buttons.channelId}/messages`);
+		headers.Authorization = `Bot ${buttons.botToken}`;
+	} else {
+		core_setSecret(webhookUrl);
+		try {
+			url = new URL(webhookUrl);
+		} catch {
+			throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+		}
+		if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.username || url.password || url.port || !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[^/]+\/?$/.test(url.pathname)) throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+		url.searchParams.set("wait", "true");
 	}
-	if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.username || url.password || url.port || !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[^/]+\/?$/.test(url.pathname)) throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
-	url.searchParams.set("wait", "true");
 	const payload = {
 		content: "Assignment requested — awaiting maintainer approval.",
 		allowed_mentions: { parse: [] },
+		...buttons ? { components: [{
+			type: 1,
+			components: [
+				{
+					type: 2,
+					style: 1,
+					label: "Assign",
+					custom_id: createButtonId("assign", request, buttons.secret)
+				},
+				{
+					type: 2,
+					style: 2,
+					label: "Dismiss",
+					custom_id: createButtonId("dismiss", request, buttons.secret)
+				},
+				{
+					type: 2,
+					style: 5,
+					label: "View request",
+					url: request.commentUrl
+				}
+			]
+		}] } : {},
 		embeds: [{
 			title: `#${request.issueNumber}: ${request.issueTitle}`.slice(0, 256),
 			url: request.commentUrl,
@@ -42270,7 +42322,7 @@ async function sendDiscordAssignmentRequest(webhookUrl, request) {
 	try {
 		response = await fetch(url, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			body: JSON.stringify(payload),
 			signal: AbortSignal.timeout(15e3),
 			redirect: "error"
@@ -42311,7 +42363,7 @@ var RequestAssignmentCommand = class {
 		setOutput("comment_id", comment.id);
 		setOutput("assignment_requested", "yes");
 		info(`Assignment requested by @${username} for issue #${issue.number}`);
-		if (context.config.discordWebhookUrl) {
+		if (context.config.discordButtonsEnabled || context.config.discordWebhookUrl) {
 			await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
 				repository: `${context.repoOwner}/${context.repoName}`,
 				issueNumber: Number(issue.number),
@@ -42320,7 +42372,11 @@ var RequestAssignmentCommand = class {
 				commentUrl: comment.html_url,
 				commentBody: comment.body ?? "",
 				commentId: comment.id
-			});
+			}, context.config.discordButtonsEnabled ? {
+				botToken: context.config.discordBotToken,
+				channelId: context.config.discordChannelId,
+				secret: context.config.discordButtonSecret
+			} : void 0);
 			setOutput("discord_notified", "yes");
 			info("Sent assignment request notification to Discord");
 		}
@@ -42354,6 +42410,7 @@ function getInputWithDeprecation(newName, deprecatedName) {
 function loadConfig() {
 	const githubToken = getInput("github_token");
 	if (!githubToken) throw new Error("Missing required input: github_token");
+	const discordButtonsEnabled = getInput("discord_buttons_enabled") === "true";
 	const maintainersInput = getInput("maintainers");
 	const maxOverallLabelsInput = getInput("max_overall_assignment_labels");
 	const reminderDaysInput = getInput("reminder_days");
@@ -42375,8 +42432,12 @@ function loadConfig() {
 		daysUntilUnassign: Number(getInput("days_until_unassign")) || 14,
 		maintainers: maintainersInput ? maintainersInput.split(",").map((m) => m.trim()).filter(Boolean) : [],
 		enableAutoSuggestion: getBooleanInput("enable_auto_suggestion"),
-		requireApproval: getBooleanInput("require_approval"),
+		requireApproval: getBooleanInput("require_approval") || discordButtonsEnabled,
 		discordWebhookUrl: getInput("discord_webhook_url"),
+		discordButtonsEnabled,
+		discordBotToken: getInput("discord_bot_token"),
+		discordChannelId: getInput("discord_channel_id"),
+		discordButtonSecret: getInput("discord_button_secret"),
 		allowSelfAssignAuthor: getInput("allow_self_assign_author") !== "false",
 		blockAssignment: getInput("block_assignment") === "true",
 		maxAssignments: Number.parseInt(getInput("max_assignments") || "3", 10),

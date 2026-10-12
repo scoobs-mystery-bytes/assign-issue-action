@@ -209,8 +209,48 @@ Requests time out after 15 seconds. Delivery is confirmed using Discord's
 Each eligible comment sends one message per workflow run. Rerunning the workflow,
 repeating the request, or enabling edited-comment events can send duplicates;
 this action does not persist notification state or automatically retry delivery.
-Interactive approval and assignment from Discord require a separately hosted
-Discord application handler.
+Interactive approval and assignment from Discord are available through the
+optional button mode below, using a separately hosted Discord application handler.
+
+## Optional Discord approval buttons
+
+Set `discord_buttons_enabled: "true"` to replace the default webhook notification
+with a bot message containing **Assign**, **Dismiss**, and **View request** controls.
+Button mode automatically enables approval mode, even if `require_approval` is
+false, and takes precedence over `discord_webhook_url`. It never falls back to a
+webhook if button credentials are missing or delivery fails. With buttons disabled,
+the existing webhook notification and GitHub review flow remain available.
+
+```yaml
+name: Review assignment requests in Discord
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  issues: read
+jobs:
+  notify:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: scoobs-mystery-bytes/assign-issue-action@<commit-sha>
+        with:
+          discord_buttons_enabled: "true"
+          discord_bot_token: ${{ secrets.DISCORD_BOT_TOKEN }}
+          discord_channel_id: ${{ vars.DISCORD_CHANNEL_ID }}
+          discord_button_secret: ${{ secrets.DISCORD_BUTTON_SECRET }}
+```
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `discord_buttons_enabled` | `false` | Use bot messages and approval buttons instead of webhooks. |
+| `discord_bot_token` | Empty | Bot token stored as an Actions secret. |
+| `discord_channel_id` | Empty | Channel where the bot posts requests. |
+| `discord_button_secret` | Empty | Shared signing secret, at least 32 characters, stored as an Actions secret. |
+
+Buttons require the separately deployed Cloudflare Worker in
+[`discord-handler`](discord-handler/README.md). Follow its setup guide before
+enabling button mode. No additional hosting is needed for webhook-only mode.
 
 ## Outputs
 

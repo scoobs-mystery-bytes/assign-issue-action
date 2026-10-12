@@ -49,16 +49,29 @@ export class RequestAssignmentCommand implements Command {
     core.setOutput('assignment_requested', 'yes')
     core.info(`Assignment requested by @${username} for issue #${issue.number}`)
 
-    if (context.config.discordWebhookUrl) {
-      await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
-        repository: `${context.repoOwner}/${context.repoName}`,
-        issueNumber: Number(issue.number),
-        issueTitle: issue.title ?? '',
-        requester: username,
-        commentUrl: comment.html_url,
-        commentBody: comment.body ?? '',
-        commentId: comment.id,
-      })
+    if (
+      context.config.discordButtonsEnabled ||
+      context.config.discordWebhookUrl
+    ) {
+      await sendDiscordAssignmentRequest(
+        context.config.discordWebhookUrl,
+        {
+          repository: `${context.repoOwner}/${context.repoName}`,
+          issueNumber: Number(issue.number),
+          issueTitle: issue.title ?? '',
+          requester: username,
+          commentUrl: comment.html_url,
+          commentBody: comment.body ?? '',
+          commentId: comment.id,
+        },
+        context.config.discordButtonsEnabled
+          ? {
+              botToken: context.config.discordBotToken,
+              channelId: context.config.discordChannelId,
+              secret: context.config.discordButtonSecret,
+            }
+          : undefined,
+      )
       core.setOutput('discord_notified', 'yes')
       core.info('Sent assignment request notification to Discord')
     }

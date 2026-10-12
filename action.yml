@@ -43,6 +43,18 @@ inputs:
       Note: To use team slugs, `github_token` must be a Personal Access Token (PAT) with `read:org` scope.
     default: "" # i.e: 'takanome-dev,octokit,@my-org/core-team'
     required: true
+  discord_buttons_enabled:
+    description: Enable bot-based Assign/Dismiss buttons, overriding webhook notification and enabling approval mode.
+    default: "false"
+  discord_bot_token:
+    description: Discord bot token for button mode. Pass an Actions secret.
+    default: ""
+  discord_channel_id:
+    description: Discord channel ID where button messages are posted.
+    default: ""
+  discord_button_secret:
+    description: Shared signing secret of at least 32 characters, matching the hosted handler. Pass an Actions secret.
+    default: ""
   discord_webhook_url:
     description: >
       Optional Discord incoming webhook URL for eligible assignment requests.

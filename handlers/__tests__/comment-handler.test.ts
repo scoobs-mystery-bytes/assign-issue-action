@@ -72,6 +72,10 @@ describe('CommentHandler approval mode', () => {
     config = {
       requireApproval: true,
       discordWebhookUrl: '',
+      discordButtonsEnabled: false,
+      discordBotToken: '',
+      discordChannelId: '',
+      discordButtonSecret: '',
       enableAutoSuggestion: true,
       selfAssignCmd: '/assign-me',
       selfUnassignCmd: '/unassign-me',
@@ -212,6 +216,47 @@ describe('CommentHandler approval mode', () => {
     await new CommentHandler().handle_issue_comment()
     expect(outputs.get('assignment_requested')).toBe('yes')
     expectNoWrites()
+  })
+
+  it('uses button mode instead of the webhook when enabled', async () => {
+    const send = spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{}'),
+    )
+    config.discordButtonsEnabled = true
+    config.discordWebhookUrl = 'invalid-webhook-must-not-be-used'
+    config.discordBotToken = 'bot-token'
+    config.discordChannelId = '456'
+    config.discordButtonSecret = 'secret'.repeat(8)
+    await new CommentHandler().handle_issue_comment()
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(String(send.mock.calls[0][0])).toBe(
+      'https://discord.com/api/v10/channels/456/messages',
+    )
+    const options = send.mock.calls[0][1]
+    expect(options?.headers).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bot bot-token',
+    })
+    const body = JSON.parse(String(options?.body))
+    expect(
+      body.components[0].components.map(
+        (item: { label: string }) => item.label,
+      ),
+    ).toEqual(['Assign', 'Dismiss', 'View request'])
+    expect(outputs.get('discord_notified')).toBe('yes')
+    expect(outputs.get('assigned')).toBe('no')
+    expectNoWrites()
+  })
+
+  it('fails button mode with missing credentials without falling back to the webhook', async () => {
+    const send = spyOn(globalThis, 'fetch')
+    config.discordButtonsEnabled = true
+    config.discordWebhookUrl = 'https://discord.com/api/webhooks/123/token'
+    await expect(new CommentHandler().handle_issue_comment()).rejects.toThrow(
+      'Button mode requires',
+    )
+    expect(send).not.toHaveBeenCalled()
+    expect(outputs.get('discord_notified')).toBe('no')
   })
 
   it('sends an eligible request to Discord when configured', async () => {
