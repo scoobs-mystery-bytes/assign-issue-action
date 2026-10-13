@@ -1,4 +1,4 @@
-name: Assign Issue Action
+name: Assign Issue Action — Automation & Approvals
 author: takanome-dev
 description: >
   Enable commands that streamline issue assignments:
@@ -8,7 +8,13 @@ description: >
   - /assign @user for maintainers to assign specific users.
   - /unassign @user for maintainers to unassign others easily.
 
-  This action simplifies issue management for maintainers and contributors, making collaboration more efficient.
+  This action simplifies issue management for maintainers and contributors.
+  It also supports scheduled unassignment, reminders, and assignment limits.
+
+  Optional extensions add assignment approval requests, Discord notifications
+  and approval buttons, requester updates, shared pending requests, and
+  GitHub App identity. Original assignment behavior remains available without
+  Discord or approval integration.
 
 runs:
   using: node20

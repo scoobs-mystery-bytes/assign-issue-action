@@ -1,4 +1,6 @@
-<h2 align="center">💬 Assign Issue Action ✋</h2>
+<h2 align="center">Assign Issue Action — Automation &amp; Approvals</h2>
+
+<p align="center">Issue assignment commands and scheduled maintenance, extended with optional Discord notifications and approval workflows.</p>
 
 
 #### This is a maintained fork of [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action), with assignment approval requests, Discord notifications and buttons, shared pending requests, and optional GitHub App identity. Original assignment commands and scheduled maintenance remain available.
@@ -7,6 +9,12 @@ If you only need issue assignment commands and scheduled maintenance, without Di
 [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action).
 
 This fork focuses on assignment automation with notifications and maintainer approval so that you do not miss a contributor that would like to work on an issue and has requested to do so.
+
+The original functionality remains part of this fork: contributors can self-assign
+and unassign, maintainers can assign other users, and scheduled jobs can send
+reminders and release inactive assignments. Assignment limits, labels, and welcome
+messages remain configurable. Discord integration and approval workflows are
+optional additions; they are not required to use these features.
 
 **Start here:**
 [Complete setup and deployment](examples/README.md) ·
@@ -45,7 +53,10 @@ enable shared tracking. Its sample required label and assignment limit can be ad
 - Durable retries for failed closure notifications.
 - Optional GitHub App authentication for a branded comment author; personal tokens remain supported.
 
-Original assignment features are also available when approval mode is disabled:
+Original assignment features remain supported. Approval mode changes contributor
+self-assignment into a request; maintainer commands and scheduled maintenance retain
+their existing behavior:
+
 
 - 📝 Self-assign issues using `/assign-me` command (default)
 - 🗑️ Self-unassign from issues using `/unassign-me` command (default)
