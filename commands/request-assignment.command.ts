@@ -74,6 +74,13 @@ export class RequestAssignmentCommand implements Command {
       )
       core.setOutput('discord_notified', 'yes')
       core.info('Sent assignment request notification to Discord')
+      if (context.config.discordButtonsEnabled) {
+        await services.commentService.createCommentOnce(
+          Number(issue.number),
+          `@${username}, your assignment request has been sent to the maintainers for review. We'll let you know here once it has been approved or denied.`,
+          `<!-- assignment-request-received:${comment.id} -->`,
+        )
+      }
     }
 
     return { success: true, message: 'Assignment requires maintainer approval' }

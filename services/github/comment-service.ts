@@ -28,6 +28,34 @@ export class CommentService {
     )
   }
 
+  async createCommentOnce(
+    issueNumber: number,
+    body: string,
+    marker: string,
+  ): Promise<void> {
+    for (let page = 1; ; page++) {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/issues/{issue_number}/comments',
+        {
+          ...this.repoContext,
+          issue_number: issueNumber,
+          per_page: 100,
+          page,
+          headers: { 'X-GitHub-Api-Version': API_VERSION },
+        },
+      )
+      if (
+        data.some(
+          (comment) =>
+            comment.user?.type === 'Bot' && comment.body?.includes(marker),
+        )
+      )
+        return
+      if (data.length < 100) break
+    }
+    await this.createComment(issueNumber, `${body}\n\n${marker}`)
+  }
+
   /**
    * Create a comment using a mustache template
    */

@@ -1,10 +1,15 @@
+import {
+  getGitHubToken,
+  hasGitHubAuth,
+  type GitHubAuthConfig,
+} from './github-auth'
 import { createPublicKey, verify } from 'node:crypto'
 import {
   parseButtonId,
   verifyButton,
 } from '../services/discord/button-protocol'
 
-export interface HandlerConfig {
+export interface HandlerConfig extends GitHubAuthConfig {
   DISCORD_PUBLIC_KEY: string
   DISCORD_APPLICATION_ID: string
   DISCORD_GUILD_ID: string
@@ -13,8 +18,6 @@ export interface HandlerConfig {
   DISCORD_BUTTON_SECRET: string
   DISCORD_APPROVER_USER_IDS?: string
   DISCORD_APPROVER_ROLE_IDS?: string
-  GITHUB_REPOSITORY: string
-  GITHUB_TOKEN: string
   GITHUB_REQUIRED_LABEL?: string
 }
 
@@ -33,6 +36,7 @@ export interface Resolution {
   status: 'assigned' | 'dismissed'
   requester: string
   approver: string
+  notified?: boolean
 }
 
 export interface ResolutionStorage {
@@ -150,7 +154,7 @@ export async function handleInteraction(
     return reply('Unsupported assignment request.')
   if (
     !/^[A-Za-z0-9-]+\/[A-Za-z0-9_.-]+$/.test(config.GITHUB_REPOSITORY) ||
-    !config.GITHUB_TOKEN ||
+    !hasGitHubAuth(config) ||
     !config.DISCORD_BOT_TOKEN ||
     !config.DISCORD_BUTTON_SECRET ||
     config.DISCORD_BUTTON_SECRET.length < 32
@@ -167,6 +171,17 @@ async function api<T>(
   method = 'GET',
   body?: unknown,
 ): Promise<T> {
+  const service =
+    new URL(url).hostname === 'api.github.com' ? 'GitHub' : 'Discord'
+  const operation = url.includes('/webhooks/')
+    ? 'interaction response'
+    : url.includes('/messages/')
+      ? 'message'
+      : url.includes('/assignees')
+        ? 'assignment'
+        : url.includes('/issues/comments/')
+          ? 'comment'
+          : 'issue'
   let response: Response
   try {
     response = await fetch(url, {
@@ -174,17 +189,42 @@ async function api<T>(
       headers: { ...headers, 'Content-Type': 'application/json' },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(5000),
-      redirect: 'error',
+      redirect: 'manual',
     })
-  } catch {
+  } catch (error) {
+    const errorType =
+      error instanceof Error &&
+      /^(Error|TypeError|AbortError|TimeoutError)$/.test(error.name)
+        ? error.name
+        : 'NetworkError'
+    let detail = error instanceof Error ? error.message : 'Unknown fetch error'
+    detail = detail.split(url).join('[API URL]')
+    for (const value of Object.values(headers)) {
+      if (value) detail = detail.split(value).join('[header]')
+      const credential = value.replace(/^(Bot|Bearer) /, '')
+      if (credential) detail = detail.split(credential).join('[credential]')
+    }
+    detail = detail.replace(/https?:\/\/[^\s"'<>]+/g, '[URL]').slice(0, 300)
+    console.error('Approval API network failure', {
+      service,
+      operation,
+      method,
+      errorType,
+      detail,
+    })
+    throw new Error(`${service} ${operation} failed (${errorType}). Try again.`)
+  }
+  if (!response.ok) {
+    console.error('Approval API HTTP failure', {
+      service,
+      operation,
+      method,
+      status: response.status,
+    })
     throw new Error(
-      'The approval service could not reach GitHub or Discord. Try again.',
+      `${service} ${operation} received HTTP ${response.status}. Try again or contact a maintainer.`,
     )
   }
-  if (!response.ok)
-    throw new Error(
-      `The approval service received HTTP ${response.status}. Try again or contact a maintainer.`,
-    )
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
@@ -218,8 +258,9 @@ export async function resolveAssignment(
   const button = parseButtonId(interaction.data?.custom_id ?? '')
   if (!button) throw new Error('Invalid assignment button.')
   const githubBase = `https://api.github.com/repos/${config.GITHUB_REPOSITORY}`
+  const githubToken = await getGitHubToken(config)
   const githubHeaders = {
-    Authorization: `Bearer ${config.GITHUB_TOKEN}`,
+    Authorization: `Bearer ${githubToken}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'assign-issue-action',
@@ -313,6 +354,31 @@ export async function resolveAssignment(
       requester: comment.user.login,
       approver: interaction.member?.user?.id ?? '',
     }
+    await storage.put(key, resolution)
+  }
+  if (!resolution.notified) {
+    const commentsUrl = `${githubBase}/issues/${button.issueNumber}/comments`
+    const marker = `<!-- assignment-decision:${button.commentId}:${resolution.status} -->`
+    const body =
+      resolution.status === 'assigned'
+        ? `@${resolution.requester}, your assignment request was approved. You have been assigned to this issue.`
+        : `@${resolution.requester}, your assignment request was denied. You have not been assigned through this request.`
+    const notification = `${body}\n\n${marker}`
+    let found = false
+    for (let page = 1; ; page++) {
+      const comments = await api<Array<{ body: string }>>(
+        `${commentsUrl}?per_page=100&page=${page}`,
+        githubHeaders,
+      )
+      if (comments.some((item) => item.body === notification)) {
+        found = true
+        break
+      }
+      if (comments.length < 100) break
+    }
+    if (!found)
+      await api(commentsUrl, githubHeaders, 'POST', { body: notification })
+    resolution = { ...resolution, notified: true }
     await storage.put(key, resolution)
   }
   const status =

@@ -170,6 +170,8 @@ describe('Assignment resolution', () => {
   let writes: number
   let patches: Array<Record<string, unknown>>
   let failure: number
+  let comments: Array<{ body: string }>
+  let commentFailure: boolean
   const storage = {
     get: async (key: string): Promise<Resolution | undefined> =>
       records.get(key),
@@ -183,6 +185,8 @@ describe('Assignment resolution', () => {
     writes = 0
     patches = []
     failure = 0
+    comments = []
+    commentFailure = false
     githubIssue = {
       state: 'open',
       title: 'Issue title',
@@ -192,6 +196,14 @@ describe('Assignment resolution', () => {
     spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
       const url = String(input)
       if (failure) return new Response('{}', { status: failure })
+      if (url.includes('/issues/42/comments')) {
+        if (options?.method === 'POST') {
+          comments.push(JSON.parse(String(options.body)))
+          if (commentFailure) throw new TypeError('Simulated lost response')
+          return Response.json(comments[comments.length - 1])
+        }
+        return Response.json(comments)
+      }
       if (url.includes('/issues/comments/'))
         return Response.json({
           id: 123,
@@ -223,6 +235,9 @@ describe('Assignment resolution', () => {
       'Assigned to @contributor',
     )
     expect(writes).toBe(1)
+    expect(comments[0].body).toContain(
+      '@contributor, your assignment request was approved.',
+    )
     expect(records.get('123')?.status).toBe('assigned')
     expect(patches[0].components).toEqual([])
   })
@@ -233,11 +248,29 @@ describe('Assignment resolution', () => {
       'dismissed',
     )
     expect(writes).toBe(0)
+    expect(comments).toHaveLength(1)
+    expect(comments[0].body).toContain(
+      '@contributor, your assignment request was denied.',
+    )
   })
   it('does not assign twice on repeat approval', async () => {
     await resolveAssignment(config, interaction(), storage)
     await resolveAssignment(config, interaction(), storage)
     expect(writes).toBe(1)
+    expect(comments).toHaveLength(1)
+  })
+  it('recovers a lost comment response without posting twice or assigning again', async () => {
+    commentFailure = true
+    await expect(
+      resolveAssignment(config, interaction(), storage),
+    ).rejects.toThrow('failed')
+    expect(records.get('123')?.status).toBe('assigned')
+    expect(records.get('123')?.notified).not.toBe(true)
+    commentFailure = false
+    await resolveAssignment(config, interaction(), storage)
+    expect(comments).toHaveLength(1)
+    expect(writes).toBe(1)
+    expect(records.get('123')?.notified).toBe(true)
   })
   it('rejects changed comments and forged buttons', async () => {
     commentBody = 'I no longer want to work on this'

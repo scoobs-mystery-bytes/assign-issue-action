@@ -27,6 +27,7 @@ export class AssignmentApprovals {
           put: (key, value) => this.ctx.storage.put(key, value),
         })
       } catch (error) {
+        console.error('Assignment resolution failed')
         return error instanceof Error
           ? error.message
           : 'Approval failed. Try again.'

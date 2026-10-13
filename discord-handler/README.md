@@ -37,7 +37,8 @@ secret `DISCORD_BUTTON_SECRET`.
 
 Use a GitHub fine-grained personal access token restricted to the target repository
 with **Issues: read and write**. The Worker's `GITHUB_TOKEN` is a separate credential;
-the short-lived Actions `GITHUB_TOKEN` cannot serve this hosted handler.
+the short-lived Actions `GITHUB_TOKEN` cannot serve this hosted handler. Alternatively,
+use the optional GitHub App setup below.
 
 Authenticate Wrangler and configure secrets (commands run from the repository root):
 
@@ -77,7 +78,11 @@ activates approval mode, so requests do not assign themselves automatically.
 - Assign refreshes GitHub data and checks that the issue is open, still has any
   required label, and has no different assignee. It assigns the original commenter,
   verifies GitHub accepted the assignment, and updates the Discord message.
-- Dismiss records the decision and updates Discord without changing GitHub.
+- Dismiss records the denial without assigning the requester.
+- Both decisions post a GitHub issue comment mentioning the requester and stating
+  whether their request was approved or denied. The comment is posted by the
+  account owning the Worker's GitHub token. Stored state and a hidden comment marker
+  prevent duplicate notifications on retries, including a lost create-comment response.
 - Completed messages have their controls removed. The original comment remains linked.
 - SQLite-backed Durable Objects serialize decisions per repository/issue and store
   each comment's result, preventing repeated or simultaneous clicks from assigning
@@ -89,7 +94,7 @@ activates approval mode, so requests do not assign themselves automatically.
 The action checks its normal eligibility rules before posting. Clicking Assign is
 an explicit maintainer approval: the handler rechecks the current issue, comment,
 and configured required label; it does not rerun workload limits or add assignment
-labels/comments. GitHub changes outside this handler are not serialized with its
+assignment labels or welcome comments; it posts the decision comment described above. GitHub changes outside this handler are not serialized with its
 Durable Object, so maintainers should avoid assigning the same issue simultaneously
 through another interface. Existing maintainer commands remain available.
 
@@ -120,3 +125,82 @@ Cloudflare account as needed.
 
 References: [Discord interactions](https://docs.discord.com/developers/interactions/receiving-and-responding),
 [Cloudflare Durable Object state](https://developers.cloudflare.com/durable-objects/api/state/).
+
+## Optional: post as a GitHub App
+
+This is optional. The default workflow posts request receipts as `github-actions[bot]`,
+and the Worker posts decisions as the account owning its personal `GITHUB_TOKEN`.
+For a branded identity, configure both components to use a GitHub App installation.
+An organization cannot author comments directly; an App uses `<app-slug>[bot]`.
+
+1. In the organization settings, open **Developer settings → GitHub Apps → New GitHub App**.
+   Set a unique name and homepage URL, disable webhooks, grant **Repository permissions →
+   Issues: read and write**, and restrict installation to your account.
+2. In the App registration, open **Credentials → Key pairs → New key** and save the
+   PEM privately. Older GitHub layouts show **General → Private keys** instead.
+   This is a private key, not an OAuth client secret.
+3. Use **Install App** to install it on only the repository receiving requests.
+   Record the App ID and the installation ID (from the installation settings URL).
+4. Add the complete PEM as repository Actions secret `ASSIGNMENT_APP_PRIVATE_KEY`,
+   and add Actions variable `ASSIGNMENT_APP_ID` containing the App ID.
+5. Add the following step before the assignment action, then pass its token to the
+   action's existing `github_token` input:
+
+```yaml
+- name: Create optional App token
+  if: vars.ASSIGNMENT_APP_ID != ''
+  id: app-token
+  uses: actions/create-github-app-token@v3
+  with:
+    app-id: ${{ vars.ASSIGNMENT_APP_ID }}
+    private-key: ${{ secrets.ASSIGNMENT_APP_PRIVATE_KEY }}
+    owner: ${{ github.repository_owner }}
+    repositories: ${{ github.event.repository.name }}
+    permission-issues: write
+- uses: scoobs-mystery-bytes/assign-issue-action@<built-commit-sha>
+  with:
+    github_token: ${{ steps.app-token.outputs.token || github.token }}
+    discord_buttons_enabled: "true"
+    discord_bot_token: ${{ secrets.DISCORD_BOT_TOKEN }}
+    discord_channel_id: ${{ vars.DISCORD_CHANNEL_ID }}
+    discord_button_secret: ${{ secrets.DISCORD_BUTTON_SECRET }}
+```
+
+A complete workflow is available in [examples/assignment-requests.yml](../examples/assignment-requests.yml).
+
+Keep the existing `issue_comment` trigger, issue-write permission, job condition,
+assignment limits, and required label. Use a built commit containing receipt support.
+The token action accepts App IDs; its current recommendation is to use `client-id`
+instead if you choose to store the App's client ID.
+
+For the Worker, add these non-secret variables to `discord-handler/wrangler.jsonc`:
+
+```json
+"GITHUB_APP_ID": "<app-id>",
+"GITHUB_APP_INSTALLATION_ID": "<installation-id>"
+```
+
+Upload the same complete PEM file directly from your terminal:
+
+```sh
+bunx wrangler secret put GITHUB_APP_PRIVATE_KEY --config discord-handler/wrangler.jsonc < /absolute/path/to/app.private-key.pem
+bun run handler:deploy
+```
+
+The Worker generates a fresh short-lived installation token for each approval,
+restricted to the configured repository and Issues write permission. Complete App
+configuration overrides `GITHUB_TOKEN`; partial App settings fail rather than
+silently posting under a personal identity. Keep the personal token while verifying
+migration, then revoke it if it is no longer needed elsewhere. To return to personal
+mode, remove both App variables and the App private-key secret, retaining `GITHUB_TOKEN`.
+
+Do not commit PEM files or put private keys in `wrangler.jsonc`. A downloaded PEM
+is a secret; store it in a password manager or another secure location. App-generated
+comments trigger GitHub Actions events, but this action ignores bot comments.
+
+Test a new request after updating the workflow on the default branch: its receipt
+should use the App identity. Approve or dismiss it and confirm that the decision
+comment uses the same identity. Existing comments retain their original authors.
+
+References: [GitHub App workflow authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow),
+[installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app).

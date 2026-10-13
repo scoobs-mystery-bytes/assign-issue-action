@@ -38,6 +38,22 @@ describe('CommentService', () => {
     })
   })
 
+  it('skips an existing bot receipt found on a later page', async () => {
+    mockRequest.mockResolvedValueOnce({
+      data: Array.from({ length: 100 }, () => ({ body: 'Other' })),
+    })
+    mockRequest.mockResolvedValueOnce({
+      data: [{ body: '<!-- receipt:123 -->', user: { type: 'Bot' } }],
+    })
+    await service.createCommentOnce(123, 'Received', '<!-- receipt:123 -->')
+    expect(mockRequest).toHaveBeenCalledTimes(2)
+    expect(
+      mockRequest.mock.calls.every((call: unknown[]) =>
+        String(call[0]).startsWith('GET '),
+      ),
+    ).toBe(true)
+  })
+
   describe('createTemplatedComment', () => {
     it('should render template and post comment', async () => {
       await service.createTemplatedComment(

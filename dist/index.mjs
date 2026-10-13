@@ -42379,6 +42379,7 @@ var RequestAssignmentCommand = class {
 			} : void 0);
 			setOutput("discord_notified", "yes");
 			info("Sent assignment request notification to Discord");
+			if (context.config.discordButtonsEnabled) await services.commentService.createCommentOnce(Number(issue.number), `@${username}, your assignment request has been sent to the maintainers for review. We'll let you know here once it has been approved or denied.`, `<!-- assignment-request-received:${comment.id} -->`);
 		}
 		return {
 			success: true,
@@ -42685,6 +42686,20 @@ var CommentService = class {
 			body,
 			headers: { "X-GitHub-Api-Version": API_VERSION$2 }
 		});
+	}
+	async createCommentOnce(issueNumber, body, marker) {
+		for (let page = 1;; page++) {
+			const { data } = await this.octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+				...this.repoContext,
+				issue_number: issueNumber,
+				per_page: 100,
+				page,
+				headers: { "X-GitHub-Api-Version": API_VERSION$2 }
+			});
+			if (data.some((comment) => comment.user?.type === "Bot" && comment.body?.includes(marker))) return;
+			if (data.length < 100) break;
+		}
+		await this.createComment(issueNumber, `${body}\n\n${marker}`);
 	}
 	/**
 	* Create a comment using a mustache template

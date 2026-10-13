@@ -245,7 +245,15 @@ describe('CommentHandler approval mode', () => {
     ).toEqual(['Assign', 'Dismiss', 'View request'])
     expect(outputs.get('discord_notified')).toBe('yes')
     expect(outputs.get('assigned')).toBe('no')
-    expectNoWrites()
+    expect(
+      request.mock.calls.some(([route]) => route.startsWith('POST ')),
+    ).toBe(true)
+    const posted = (
+      request.mock.calls as unknown as Array<[string, { body?: string }]>
+    ).find(([route]) => route.startsWith('POST '))
+    expect(posted?.[1].body).toContain(
+      '@contributor, your assignment request has been sent',
+    )
   })
 
   it('fails button mode with missing credentials without falling back to the webhook', async () => {

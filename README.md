@@ -279,3 +279,19 @@ We would love you to contribute to this project, pull requests are welcome!
 ## ⚖️ LICENSE
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
+
+### Request receipt in button mode
+
+After Discord accepts an eligible request, button mode posts a GitHub issue comment
+mentioning the requester and confirming that maintainers will review it. Failed
+Discord deliveries do not post a receipt. A hidden marker avoids duplicate receipts
+when rerunning the same request. The workflow needs `issues: write` permission.
+Detection-only and webhook modes retain their existing behavior.
+
+### Optional GitHub App comment identity
+
+A GitHub App is optional. By default, request confirmations use the workflow token
+(`github-actions[bot]`), while decision comments use the Worker's personal-token owner.
+To post both as your own branded App, see [the GitHub App setup](discord-handler/README.md#optional-post-as-a-github-app).
+This requires an App installation and private-key configuration in both GitHub Actions
+and Cloudflare; the existing personal-token setup remains supported.
