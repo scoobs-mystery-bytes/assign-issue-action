@@ -1,0 +1,55 @@
+README.md
+  s_c62ea6f41c5c82::t_cca662f9c766be 298-310
+action.yml
+  s_c62ea6f41c5c82::t_0b6f6d5e1dbb2d 49-51
+commands/request-assignment.command.ts
+  s_c62ea6f41c5c82::t_34c87c5be11f91 56,72,78-82,86
+core/config.ts
+  s_c62ea6f41c5c82::t_2651679b462e9b 30,150
+discord-handler/README.md
+  s_c62ea6f41c5c82::t_41361adc09bca6 101,207-267
+discord-handler/__tests__/handler.test.ts
+  s_c62ea6f41c5c82::t_567bc7d4add7d3 319-325
+discord-handler/__tests__/pending-requests.test.ts
+  s_c62ea6f41c5c82::t_f38840b77c7711 1-394
+discord-handler/api.ts
+  s_c62ea6f41c5c82::t_77571f47c97ab3 1-73
+discord-handler/handler.ts
+  s_c62ea6f41c5c82::t_c71c7f73a61262 1-6,42,46-47,53-56,304-309,313-383,385-386,390-392,409,411-423
+discord-handler/pending-requests.ts
+  s_c62ea6f41c5c82::t_2072cef689efb9 1-251
+discord-handler/worker.ts
+  s_c62ea6f41c5c82::t_d5f4c0739041c6 1-8,16,24,30-58,60-75,77,79,90-103,112-158
+dist/index.mjs
+  s_c62ea6f41c5c82::t_bb70638e700841 42250-42253,42304-42364,42411,42422-42423,42427,42487
+examples/assignment-requests.yml
+  s_c62ea6f41c5c82::t_bbdde91a7a1646 32
+handlers/__tests__/comment-handler.test.ts
+  s_c62ea6f41c5c82::t_54bde767e7053f 259-270
+services/discord/__tests__/assignment-notification.test.ts
+  s_c62ea6f41c5c82::t_63a94f87a66859 1,36-76
+services/discord/assignment-notification.ts
+  s_c62ea6f41c5c82::t_17f048cd624e7a 2-3,19,26-84,127,148
+services/discord/message-payload.ts
+  s_c62ea6f41c5c82::t_374c41af0d8461 1-68
+services/discord/request-protocol.ts
+  s_c62ea6f41c5c82::t_356765e2af9cb9 1-30
+utils/lib/inputs.ts
+  s_c62ea6f41c5c82::t_b9a9ca10e15f92 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3339d1d62345a098c9d2ebf8209501b467a1194c",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
