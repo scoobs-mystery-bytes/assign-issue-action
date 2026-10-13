@@ -1,0 +1,27 @@
+discord-handler/README.md
+  s_c62ea6f41c5c82::t_6f58a9ca972a38 3-10,24-27,71-73,106-107,141-146
+examples/README.md
+  s_c62ea6f41c5c82::t_af1604a297ae26 1-265
+examples/discord-webhook.yml
+  s_c62ea6f41c5c82::t_dc2ec9f612936a 1-20
+examples/github-review.yml
+  s_c62ea6f41c5c82::t_1974a3e0eaac5c 1-28
+examples/wrangler.jsonc
+  s_c62ea6f41c5c82::t_e57ed82de5fc70 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d81babe356d45d87a1abcf4631ed4c1f2d2bd692",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
