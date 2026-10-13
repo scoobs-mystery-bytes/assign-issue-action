@@ -316,7 +316,13 @@ describe('Assignment resolution', () => {
   it('serializes simultaneous clicks through the Durable Object', async () => {
     let previous: Promise<unknown> = Promise.resolve()
     const state = {
-      storage,
+      storage: {
+        ...storage,
+        list: async () => new Map(),
+        setAlarm: async () => {},
+        delete: async () => {},
+        deleteAlarm: async () => {},
+      },
       blockConcurrencyWhile: (
         callback: () => Promise<unknown>,
       ): Promise<unknown> => {

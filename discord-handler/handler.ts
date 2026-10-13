@@ -1,3 +1,9 @@
+import { api, ApiError } from './api'
+import {
+  completeOtherRequests,
+  type TrackedRequest,
+  type Selection,
+} from './pending-requests'
 import {
   getGitHubToken,
   hasGitHubAuth,
@@ -33,15 +39,21 @@ export interface Interaction {
 }
 
 export interface Resolution {
-  status: 'assigned' | 'dismissed'
+  status: 'assigned' | 'dismissed' | 'unavailable'
   requester: string
   approver: string
   notified?: boolean
+  selectedRequester?: string
+  competingCommentIds?: number[]
 }
 
 export interface ResolutionStorage {
   get(key: string): Promise<Resolution | undefined>
   put(key: string, value: Resolution): Promise<void>
+  listRequests?(): Promise<TrackedRequest[]>
+  putRequest?(request: TrackedRequest): Promise<void>
+  clearSelection?(): Promise<void>
+  markSelection?(selection: Selection): Promise<void>
 }
 
 function list(value?: string): string[] {
@@ -163,70 +175,6 @@ export async function handleInteraction(
   }
   enqueue(interaction)
   return Response.json({ type: 5, data: { flags: 64 } })
-}
-
-async function api<T>(
-  url: string,
-  headers: Record<string, string>,
-  method = 'GET',
-  body?: unknown,
-): Promise<T> {
-  const service =
-    new URL(url).hostname === 'api.github.com' ? 'GitHub' : 'Discord'
-  const operation = url.includes('/webhooks/')
-    ? 'interaction response'
-    : url.includes('/messages/')
-      ? 'message'
-      : url.includes('/assignees')
-        ? 'assignment'
-        : url.includes('/issues/comments/')
-          ? 'comment'
-          : 'issue'
-  let response: Response
-  try {
-    response = await fetch(url, {
-      method,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(5000),
-      redirect: 'manual',
-    })
-  } catch (error) {
-    const errorType =
-      error instanceof Error &&
-      /^(Error|TypeError|AbortError|TimeoutError)$/.test(error.name)
-        ? error.name
-        : 'NetworkError'
-    let detail = error instanceof Error ? error.message : 'Unknown fetch error'
-    detail = detail.split(url).join('[API URL]')
-    for (const value of Object.values(headers)) {
-      if (value) detail = detail.split(value).join('[header]')
-      const credential = value.replace(/^(Bot|Bearer) /, '')
-      if (credential) detail = detail.split(credential).join('[credential]')
-    }
-    detail = detail.replace(/https?:\/\/[^\s"'<>]+/g, '[URL]').slice(0, 300)
-    console.error('Approval API network failure', {
-      service,
-      operation,
-      method,
-      errorType,
-      detail,
-    })
-    throw new Error(`${service} ${operation} failed (${errorType}). Try again.`)
-  }
-  if (!response.ok) {
-    console.error('Approval API HTTP failure', {
-      service,
-      operation,
-      method,
-      status: response.status,
-    })
-    throw new Error(
-      `${service} ${operation} received HTTP ${response.status}. Try again or contact a maintainer.`,
-    )
-  }
-  if (response.status === 204) return undefined as T
-  return (await response.json()) as T
 }
 
 interface Issue {
@@ -353,16 +301,95 @@ export async function resolveAssignment(
       status: button.action === 'assign' ? 'assigned' : 'dismissed',
       requester: comment.user.login,
       approver: interaction.member?.user?.id ?? '',
+      competingCommentIds:
+        button.action === 'assign'
+          ? ((await storage.listRequests?.()) ?? [])
+              .filter((entry) => !entry.complete)
+              .map((entry) => entry.request.commentId)
+          : undefined,
     }
     await storage.put(key, resolution)
   }
+  if (resolution.status === 'assigned') {
+    const selection = {
+      issueNumber: button.issueNumber,
+      commentId: button.commentId,
+      requester: resolution.requester,
+      approver: resolution.approver,
+      commentIds: resolution.competingCommentIds ?? [],
+    }
+    await storage.markSelection?.(selection)
+    await completeOtherRequests(config, selection, storage, githubHeaders)
+    await storage.clearSelection?.()
+    resolution = (await storage.get(key)) ?? resolution
+    if (
+      (await storage.listRequests?.())?.some(
+        (entry) =>
+          entry.request.commentId === button.commentId && entry.complete,
+      )
+    )
+      return resolutionStatus(resolution)
+  }
+  const result = await finalizeResolution(
+    config,
+    button.issueNumber,
+    button.commentId,
+    resolution,
+    storage,
+    githubHeaders,
+    interaction.message!.id,
+    message,
+  )
+  if (storage.listRequests && storage.putRequest) {
+    const entry = (await storage.listRequests()).find(
+      (item) => item.request.commentId === button.commentId,
+    )
+    if (entry) await storage.putRequest({ ...entry, complete: true })
+  }
+  return result
+}
+
+function resolutionStatus(resolution: Resolution): string {
+  return resolution.status === 'assigned'
+    ? `Assigned to @${resolution.requester}`
+    : resolution.status === 'unavailable'
+      ? `Request closed: issue assigned to @${resolution.selectedRequester}`
+      : `Assignment request from @${resolution.requester} dismissed`
+}
+
+export async function finalizeResolution(
+  config: HandlerConfig,
+  issueNumber: number,
+  commentId: number,
+  initialResolution: Resolution,
+  storage: ResolutionStorage,
+  githubHeaders: Record<string, string>,
+  messageId?: string,
+  existingMessage?: Message,
+): Promise<string> {
+  let resolution = initialResolution
+  const githubBase = `https://api.github.com/repos/${config.GITHUB_REPOSITORY}`
+  const discordHeaders = { Authorization: `Bot ${config.DISCORD_BOT_TOKEN}` }
+  const messageUrl = `https://discord.com/api/v10/channels/${config.DISCORD_CHANNEL_ID}/messages/${messageId}`
+  let message = existingMessage ?? {}
+  if (!existingMessage && messageId) {
+    try {
+      message = await api<Message>(messageUrl, discordHeaders)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404)
+        messageId = undefined
+      else throw error
+    }
+  }
   if (!resolution.notified) {
-    const commentsUrl = `${githubBase}/issues/${button.issueNumber}/comments`
-    const marker = `<!-- assignment-decision:${button.commentId}:${resolution.status} -->`
+    const commentsUrl = `${githubBase}/issues/${issueNumber}/comments`
+    const marker = `<!-- assignment-decision:${commentId}:${resolution.status} -->`
     const body =
       resolution.status === 'assigned'
         ? `@${resolution.requester}, your assignment request was approved. You have been assigned to this issue.`
-        : `@${resolution.requester}, your assignment request was denied. You have not been assigned through this request.`
+        : resolution.status === 'unavailable'
+          ? `@${resolution.requester}, this issue has been assigned to another contributor. Thank you for offering to help!`
+          : `@${resolution.requester}, your assignment request was denied. You have not been assigned through this request.`
     const notification = `${body}\n\n${marker}`
     let found = false
     for (let page = 1; ; page++) {
@@ -379,23 +406,21 @@ export async function resolveAssignment(
     if (!found)
       await api(commentsUrl, githubHeaders, 'POST', { body: notification })
     resolution = { ...resolution, notified: true }
-    await storage.put(key, resolution)
+    await storage.put(String(commentId), resolution)
   }
-  const status =
-    resolution.status === 'assigned'
-      ? `Assigned to @${resolution.requester}`
-      : `Assignment request from @${resolution.requester} dismissed`
-  await api(messageUrl, discordHeaders, 'PATCH', {
-    content: status,
-    allowed_mentions: { parse: [] },
-    components: [],
-    embeds: (message.embeds ?? []).map((embed) => ({
-      ...embed,
-      fields: embed.fields?.map((field) =>
-        field.name === 'Status' ? { ...field, value: status } : field,
-      ),
-    })),
-  })
+  const status = resolutionStatus(resolution)
+  if (messageId)
+    await api(messageUrl, discordHeaders, 'PATCH', {
+      content: status,
+      allowed_mentions: { parse: [] },
+      components: [],
+      embeds: (message.embeds ?? []).map((embed) => ({
+        ...embed,
+        fields: embed.fields?.map((field) =>
+          field.name === 'Status' ? { ...field, value: status } : field,
+        ),
+      })),
+    })
   return status
 }
 

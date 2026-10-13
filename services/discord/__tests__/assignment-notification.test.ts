@@ -1,3 +1,4 @@
+import { verifyRequestSignature } from '../request-protocol'
 import { afterEach, describe, expect, it, spyOn } from 'bun:test'
 import * as core from '@actions/core'
 import {
@@ -32,6 +33,47 @@ function setup(): void {
 }
 
 describe('Discord assignment notification', () => {
+  it('registers through the configured Worker with a signed payload and returns the canonical request', async () => {
+    setup()
+    fetchSpy.mockResolvedValue(
+      Response.json({ commentId: 122, receiptPosted: true }),
+    )
+    const secret = 'shared-secret'.repeat(4)
+    expect(
+      await sendDiscordAssignmentRequest('', request, {
+        botToken: 'bot-token',
+        channelId: '456',
+        secret,
+        handlerUrl: 'https://worker.example',
+      }),
+    ).toEqual({ commentId: 122, receiptPosted: true })
+    const [url, options] = fetchSpy.mock.calls[0]
+    expect(String(url)).toBe('https://worker.example/requests')
+    expect(options.headers.Authorization).toBeUndefined()
+    expect(
+      verifyRequestSignature(
+        String(options.body),
+        options.headers['X-Assignment-Timestamp'],
+        options.headers['X-Assignment-Signature'],
+        secret,
+      ),
+    ).toBe(true)
+    expect(options.body).not.toContain('bot-token')
+  })
+  it('does not fall back to direct Discord delivery when registration fails', async () => {
+    setup()
+    fetchSpy.mockResolvedValue(new Response('{}', { status: 502 }))
+    await expect(
+      sendDiscordAssignmentRequest('', request, {
+        botToken: 'bot-token',
+        channelId: '456',
+        secret: 'secret'.repeat(8),
+        handlerUrl: 'https://worker.example/requests',
+      }),
+    ).rejects.toThrow('HTTP 502')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('posts a pending request with context and mentions disabled', async () => {
     setup()
     await sendDiscordAssignmentRequest(webhook, request)

@@ -13,6 +13,7 @@ export enum INPUTS {
   DISCORD_BOT_TOKEN = 'discord_bot_token',
   DISCORD_CHANNEL_ID = 'discord_channel_id',
   DISCORD_BUTTON_SECRET = 'discord_button_secret',
+  DISCORD_HANDLER_URL = 'discord_handler_url',
   ALLOW_SELF_ASSIGN_AUTHOR = 'allow_self_assign_author',
 
   ASSIGNED_LABEL = 'assigned_label',

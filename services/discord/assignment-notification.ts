@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
-import { createButtonId } from './button-protocol'
+import { assignmentMessage } from './message-payload'
+import { requestSignature } from './request-protocol'
 
 export interface DiscordAssignmentRequest {
   repository: string
@@ -15,13 +16,72 @@ export interface DiscordButtonOptions {
   botToken: string
   channelId: string
   secret: string
+  handlerUrl?: string
 }
 
 export async function sendDiscordAssignmentRequest(
   webhookUrl: string,
   request: DiscordAssignmentRequest,
   buttons?: DiscordButtonOptions,
-): Promise<void> {
+): Promise<
+  | { commentId: number; completed?: boolean; receiptPosted?: boolean }
+  | undefined
+> {
+  if (buttons?.handlerUrl) {
+    core.setSecret(buttons.secret)
+    if (buttons.secret.length < 32)
+      throw new Error('Button signing secret must have at least 32 characters')
+    const url = new URL(buttons.handlerUrl)
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !['', '/', '/requests'].includes(url.pathname)
+    ) {
+      throw new Error(
+        'discord_handler_url must be an HTTPS Worker URL or /requests endpoint',
+      )
+    }
+    url.pathname = '/requests'
+    const body = JSON.stringify(request)
+    const timestamp = String(Math.floor(Date.now() / 1000))
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Assignment-Timestamp': timestamp,
+          'X-Assignment-Signature': requestSignature(
+            body,
+            timestamp,
+            buttons.secret,
+          ),
+        },
+        body,
+        signal: AbortSignal.timeout(30000),
+        redirect: 'error',
+      })
+    } catch {
+      throw new Error(
+        'Assignment request handler failed: network error or timeout',
+      )
+    }
+    if (!response.ok)
+      throw new Error(
+        `Assignment request handler failed (HTTP ${response.status})`,
+      )
+    const result = (await response.json()) as {
+      commentId: number
+      completed?: boolean
+      receiptPosted?: boolean
+    }
+    if (!Number.isSafeInteger(result.commentId) || result.commentId < 1)
+      throw new Error('Invalid assignment request handler response')
+    return result
+  }
   let url: URL
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (buttons) {
@@ -64,65 +124,7 @@ export async function sendDiscordAssignmentRequest(
     url.searchParams.set('wait', 'true')
   }
 
-  const payload = {
-    content: 'Assignment requested — awaiting maintainer approval.',
-    allowed_mentions: { parse: [] },
-    ...(buttons
-      ? {
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: 'Assign',
-                  custom_id: createButtonId('assign', request, buttons.secret),
-                },
-                {
-                  type: 2,
-                  style: 2,
-                  label: 'Dismiss',
-                  custom_id: createButtonId('dismiss', request, buttons.secret),
-                },
-                {
-                  type: 2,
-                  style: 5,
-                  label: 'View request',
-                  url: request.commentUrl,
-                },
-              ],
-            },
-          ],
-        }
-      : {}),
-    embeds: [
-      {
-        title: `#${request.issueNumber}: ${request.issueTitle}`.slice(0, 256),
-        url: request.commentUrl,
-        author: { name: request.repository.slice(0, 256) },
-        description: request.commentBody.slice(0, 3500),
-        fields: [
-          {
-            name: 'Requested by',
-            value: `@${request.requester}`,
-            inline: true,
-          },
-          {
-            name: 'Status',
-            value: 'Awaiting maintainer approval',
-            inline: true,
-          },
-          {
-            name: 'Original comment',
-            value: `[View request](${request.commentUrl})`,
-          },
-        ],
-        footer: { text: `Comment ID: ${request.commentId}` },
-        color: 0xf0b232,
-      },
-    ],
-  }
+  const payload = assignmentMessage(request, buttons?.secret)
 
   let response: Response
   try {
@@ -143,4 +145,5 @@ export async function sendDiscordAssignmentRequest(
       `Discord assignment notification failed (HTTP ${response.status})`,
     )
   }
+  return undefined
 }

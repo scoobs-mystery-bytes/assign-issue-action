@@ -295,3 +295,16 @@ A GitHub App is optional. By default, request confirmations use the workflow tok
 To post both as your own branded App, see [the GitHub App setup](discord-handler/README.md#optional-post-as-a-github-app).
 This requires an App installation and private-key configuration in both GitHub Actions
 and Cloudflare; the existing personal-token setup remains supported.
+
+### Shared pending requests
+
+With Discord buttons enabled, optionally set `discord_handler_url` to your deployed
+Worker's HTTPS base URL. Requests from different contributors are tracked per issue;
+repeat requests reuse an existing pending message. Approving one contributor closes
+other pending requests and mentions each requester on GitHub, explaining that the
+issue was assigned to someone else. Failed cleanup notifications retry automatically.
+
+Deploy the updated Worker before enabling the input, then update the workflow to a
+built commit from this fork. See [multiple-request setup and upgrade instructions](discord-handler/README.md#multiple-requests-for-one-issue).
+Existing messages are not retroactively registered. Direct bot/webhook delivery
+remains supported when this input is omitted.

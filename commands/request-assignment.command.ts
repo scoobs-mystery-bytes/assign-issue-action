@@ -53,7 +53,7 @@ export class RequestAssignmentCommand implements Command {
       context.config.discordButtonsEnabled ||
       context.config.discordWebhookUrl
     ) {
-      await sendDiscordAssignmentRequest(
+      const delivery = await sendDiscordAssignmentRequest(
         context.config.discordWebhookUrl,
         {
           repository: `${context.repoOwner}/${context.repoName}`,
@@ -69,16 +69,21 @@ export class RequestAssignmentCommand implements Command {
               botToken: context.config.discordBotToken,
               channelId: context.config.discordChannelId,
               secret: context.config.discordButtonSecret,
+              handlerUrl: context.config.discordHandlerUrl,
             }
           : undefined,
       )
       core.setOutput('discord_notified', 'yes')
       core.info('Sent assignment request notification to Discord')
-      if (context.config.discordButtonsEnabled) {
+      if (
+        context.config.discordButtonsEnabled &&
+        !delivery?.completed &&
+        !delivery?.receiptPosted
+      ) {
         await services.commentService.createCommentOnce(
           Number(issue.number),
           `@${username}, your assignment request has been sent to the maintainers for review. We'll let you know here once it has been approved or denied.`,
-          `<!-- assignment-request-received:${comment.id} -->`,
+          `<!-- assignment-request-received:${delivery?.commentId ?? comment.id} -->`,
         )
       }
     }

@@ -27,6 +27,7 @@ export interface ActionConfig {
   discordBotToken: string
   discordChannelId: string
   discordButtonSecret: string
+  discordHandlerUrl?: string
   allowSelfAssignAuthor: boolean
   blockAssignment: boolean
 
@@ -146,6 +147,7 @@ export function loadConfig(): ActionConfig {
     discordBotToken: core.getInput(INPUTS.DISCORD_BOT_TOKEN),
     discordChannelId: core.getInput(INPUTS.DISCORD_CHANNEL_ID),
     discordButtonSecret: core.getInput(INPUTS.DISCORD_BUTTON_SECRET),
+    discordHandlerUrl: core.getInput(INPUTS.DISCORD_HANDLER_URL),
     allowSelfAssignAuthor:
       core.getInput(INPUTS.ALLOW_SELF_ASSIGN_AUTHOR) !== 'false',
     blockAssignment: core.getInput('block_assignment') === 'true',

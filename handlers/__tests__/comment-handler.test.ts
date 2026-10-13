@@ -256,6 +256,18 @@ describe('CommentHandler approval mode', () => {
     )
   })
 
+  it('does not post another receipt when the Worker already acknowledged a tracked request', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ commentId: 122, receiptPosted: true }),
+    )
+    config.discordButtonsEnabled = true
+    config.discordButtonSecret = 'secret'.repeat(8)
+    config.discordHandlerUrl = 'https://worker.example'
+    await new CommentHandler().handle_issue_comment()
+    expect(outputs.get('discord_notified')).toBe('yes')
+    expectNoWrites()
+  })
+
   it('fails button mode with missing credentials without falling back to the webhook', async () => {
     const send = spyOn(globalThis, 'fetch')
     config.discordButtonsEnabled = true

@@ -42247,27 +42247,10 @@ function createButtonId(action, request, secret) {
 	return id;
 }
 //#endregion
-//#region services/discord/assignment-notification.ts
-async function sendDiscordAssignmentRequest(webhookUrl, request, buttons) {
-	let url;
-	const headers = { "Content-Type": "application/json" };
-	if (buttons) {
-		if (buttons.botToken) core_setSecret(buttons.botToken);
-		if (buttons.secret) core_setSecret(buttons.secret);
-		if (!buttons.botToken || !/^\d{1,20}$/.test(buttons.channelId) || buttons.secret.length < 32) throw new Error("Button mode requires discord_bot_token, discord_channel_id, and a discord_button_secret of at least 32 characters");
-		url = new URL(`https://discord.com/api/v10/channels/${buttons.channelId}/messages`);
-		headers.Authorization = `Bot ${buttons.botToken}`;
-	} else {
-		core_setSecret(webhookUrl);
-		try {
-			url = new URL(webhookUrl);
-		} catch {
-			throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
-		}
-		if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.username || url.password || url.port || !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[^/]+\/?$/.test(url.pathname)) throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
-		url.searchParams.set("wait", "true");
-	}
-	const payload = {
+//#region services/discord/message-payload.ts
+function assignmentMessage(request, secret) {
+	const buttons = secret ? { secret } : void 0;
+	return {
 		content: "Assignment requested — awaiting maintainer approval.",
 		allowed_mentions: { parse: [] },
 		...buttons ? { components: [{
@@ -42318,6 +42301,67 @@ async function sendDiscordAssignmentRequest(webhookUrl, request, buttons) {
 			color: 15774258
 		}]
 	};
+}
+//#endregion
+//#region services/discord/request-protocol.ts
+function requestSignature(body, timestamp, secret) {
+	return (0,external_node_crypto_.createHmac)("sha256", secret).update(`assignment-request:v1:${timestamp}:${body}`).digest("hex");
+}
+//#endregion
+//#region services/discord/assignment-notification.ts
+async function sendDiscordAssignmentRequest(webhookUrl, request, buttons) {
+	if (buttons?.handlerUrl) {
+		core_setSecret(buttons.secret);
+		if (buttons.secret.length < 32) throw new Error("Button signing secret must have at least 32 characters");
+		const url = new URL(buttons.handlerUrl);
+		if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || ![
+			"",
+			"/",
+			"/requests"
+		].includes(url.pathname)) throw new Error("discord_handler_url must be an HTTPS Worker URL or /requests endpoint");
+		url.pathname = "/requests";
+		const body = JSON.stringify(request);
+		const timestamp = String(Math.floor(Date.now() / 1e3));
+		let response;
+		try {
+			response = await fetch(url, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Assignment-Timestamp": timestamp,
+					"X-Assignment-Signature": requestSignature(body, timestamp, buttons.secret)
+				},
+				body,
+				signal: AbortSignal.timeout(3e4),
+				redirect: "error"
+			});
+		} catch {
+			throw new Error("Assignment request handler failed: network error or timeout");
+		}
+		if (!response.ok) throw new Error(`Assignment request handler failed (HTTP ${response.status})`);
+		const result = await response.json();
+		if (!Number.isSafeInteger(result.commentId) || result.commentId < 1) throw new Error("Invalid assignment request handler response");
+		return result;
+	}
+	let url;
+	const headers = { "Content-Type": "application/json" };
+	if (buttons) {
+		if (buttons.botToken) core_setSecret(buttons.botToken);
+		if (buttons.secret) core_setSecret(buttons.secret);
+		if (!buttons.botToken || !/^\d{1,20}$/.test(buttons.channelId) || buttons.secret.length < 32) throw new Error("Button mode requires discord_bot_token, discord_channel_id, and a discord_button_secret of at least 32 characters");
+		url = new URL(`https://discord.com/api/v10/channels/${buttons.channelId}/messages`);
+		headers.Authorization = `Bot ${buttons.botToken}`;
+	} else {
+		core_setSecret(webhookUrl);
+		try {
+			url = new URL(webhookUrl);
+		} catch {
+			throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+		}
+		if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.username || url.password || url.port || !/^\/api(?:\/v\d+)?\/webhooks\/\d+\/[^/]+\/?$/.test(url.pathname)) throw new Error("Invalid discord_webhook_url: expected a Discord webhook URL");
+		url.searchParams.set("wait", "true");
+	}
+	const payload = assignmentMessage(request, buttons?.secret);
 	let response;
 	try {
 		response = await fetch(url, {
@@ -42364,7 +42408,7 @@ var RequestAssignmentCommand = class {
 		setOutput("assignment_requested", "yes");
 		info(`Assignment requested by @${username} for issue #${issue.number}`);
 		if (context.config.discordButtonsEnabled || context.config.discordWebhookUrl) {
-			await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
+			const delivery = await sendDiscordAssignmentRequest(context.config.discordWebhookUrl, {
 				repository: `${context.repoOwner}/${context.repoName}`,
 				issueNumber: Number(issue.number),
 				issueTitle: issue.title ?? "",
@@ -42375,11 +42419,12 @@ var RequestAssignmentCommand = class {
 			}, context.config.discordButtonsEnabled ? {
 				botToken: context.config.discordBotToken,
 				channelId: context.config.discordChannelId,
-				secret: context.config.discordButtonSecret
+				secret: context.config.discordButtonSecret,
+				handlerUrl: context.config.discordHandlerUrl
 			} : void 0);
 			setOutput("discord_notified", "yes");
 			info("Sent assignment request notification to Discord");
-			if (context.config.discordButtonsEnabled) await services.commentService.createCommentOnce(Number(issue.number), `@${username}, your assignment request has been sent to the maintainers for review. We'll let you know here once it has been approved or denied.`, `<!-- assignment-request-received:${comment.id} -->`);
+			if (context.config.discordButtonsEnabled && !delivery?.completed && !delivery?.receiptPosted) await services.commentService.createCommentOnce(Number(issue.number), `@${username}, your assignment request has been sent to the maintainers for review. We'll let you know here once it has been approved or denied.`, `<!-- assignment-request-received:${delivery?.commentId ?? comment.id} -->`);
 		}
 		return {
 			success: true,
@@ -42439,6 +42484,7 @@ function loadConfig() {
 		discordBotToken: getInput("discord_bot_token"),
 		discordChannelId: getInput("discord_channel_id"),
 		discordButtonSecret: getInput("discord_button_secret"),
+		discordHandlerUrl: getInput("discord_handler_url"),
 		allowSelfAssignAuthor: getInput("allow_self_assign_author") !== "false",
 		blockAssignment: getInput("block_assignment") === "true",
 		maxAssignments: Number.parseInt(getInput("max_assignments") || "3", 10),

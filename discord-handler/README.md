@@ -98,7 +98,7 @@ assignment labels or welcome comments; it posts the decision comment described a
 Durable Object, so maintainers should avoid assigning the same issue simultaneously
 through another interface. Existing maintainer commands remain available.
 
-Request notifications are still sent once per action run. A rerun can create a
+Without shared tracking, request notifications are sent once per action run. A rerun can create a
 second Discord message, but the same comment's approval decision remains final.
 To request reconsideration after dismissal, post a new comment. Rotating the signing
 secret invalidates existing buttons. Retain the Durable Object namespace/migration
@@ -204,3 +204,64 @@ comment uses the same identity. Existing comments retain their original authors.
 
 References: [GitHub App workflow authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow),
 [installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app).
+
+## Multiple requests for one issue
+
+Enable shared tracking by adding `discord_handler_url` to the action's `with:`
+inputs. Set it to the Worker's HTTPS base URL, for example:
+
+```yaml
+discord_buttons_enabled: "true"
+discord_handler_url: https://issue-assignment-approvals.<account>.workers.dev
+```
+
+The complete workflow example uses Actions variable `DISCORD_HANDLER_URL` for this
+value. Keep the Discord **Interactions Endpoint URL** ending in `/interactions`;
+it is separate from the action's registration URL. Both use the same deployed Worker.
+
+- Each eligible requester receives a separate Discord message. Maintainers choose
+  one contributor; requests do not reserve the issue by arrival order.
+- Repeat requests by the same contributor reuse their original pending message and
+  GitHub receipt. The original request remains the source of the approval buttons.
+- Approving one contributor records the other pending requests as **assigned to
+  someone else**, removes their buttons, and posts a GitHub comment mentioning each
+  requester: “this issue has been assigned to another contributor. Thank you for
+  offering to help!” This is separate from a maintainer's explicit denial.
+- Dismiss only denies that request. A new comment can request reconsideration.
+- The Worker serializes registrations and decisions per issue. Cleanup is durable:
+  failed closure notifications retry through a Durable Object alarm after one minute.
+  Already completed assignment and GitHub comments are not repeated by cleanup.
+- The winning decision captures the pending requests at approval time, so retrying
+  an old approval cannot close a later round of requests after an issue is unassigned.
+- Tracked receipts and decision comments both use the Worker's GitHub credential.
+  Configure optional App authentication there to use the branded App identity.
+
+The action signs registration bodies with `DISCORD_BUTTON_SECRET`; the Worker
+rejects altered or expired signatures and mismatched repositories. It also reloads
+GitHub's comment and issue before creating a notification. The same secret must be
+configured in GitHub Actions and Cloudflare. No additional credentials or services
+are needed. The Discord bot needs **View Channel**, **Read Message History**,
+**Send Messages**, and **Embed Links** in the target channel.
+
+### Upgrade an existing deployment
+
+1. Deploy the updated Worker with `bun run handler:deploy` first.
+2. Push a built action commit, including `dist/index.mjs`, and update the workflow's
+   pinned commit SHA on the repository's default branch.
+3. Add `discord_handler_url` (or set `DISCORD_HANDLER_URL` if using the example).
+4. Test with two different contributors requesting the same open, unassigned issue.
+   Approve one and verify that the other receives the “assigned to another contributor”
+   comment and has no remaining Discord buttons.
+
+Only requests registered after enabling this input are tracked together. Existing
+Discord messages retain their original behavior; dismiss them manually if needed.
+Without `discord_handler_url`, direct bot and webhook notifications remain available
+and do not gain shared tracking. Assignments made manually on GitHub are still
+checked when someone clicks, but do not trigger automatic cleanup by themselves.
+
+After an uncertain initial Discord send, retries use Discord's nonce deduplication,
+which covers the past few minutes. An unusually delayed retry of a send whose
+response was lost can still create a duplicate message; state and fresh issue checks
+prevent a second contributor from being assigned. Registration errors fail the
+workflow without falling back to untracked delivery. Check Worker logs and rerun
+the failed workflow after correcting the error.
