@@ -1,36 +1,51 @@
 <h2 align="center">💬 Assign Issue Action ✋</h2>
 
-<p align="center">
-    <a href="https://github.com/takanome-dev/assign-issue-action">
-        <img alt="Licence Badge" src="https://img.shields.io/github/license/takanome-dev/assign-issue-action?color=%2330C151">
-    </a>
-    <a href="https://github.com/takanome-dev/assign-issue-action">
-        <img alt="Release Badge" src="https://img.shields.io/github/release/takanome-dev/assign-issue-action?color=%2330C151"></a>
-    <a href="https://github.com/takanome-dev/assign-issue-action">
-        <img alt="GitHub Actions status" src="https://github.com/takanome-dev/assign-issue-action/actions/workflows/development.yml/badge.svg">
-    </a>
-    <a href="https://github.com/takanome-dev/assign-issue-action">
-        <img alt="GitHub Actions status" src="https://github.com/takanome-dev/assign-issue-action/actions/workflows/codeql-analysis.yml/badge.svg">
-    </a>
-    <a href="https://codecov.io/gh/takanome-dev/assign-issue-action" >
-     <img src="https://codecov.io/gh/takanome-dev/assign-issue-action/branch/edge/graph/badge.svg?token=MX3SB0GFB3"/>
-     </a>
-</p>
 
-<p align="center">
-  <img src="public/og.png" alt="Assign Issue Action" width="1200" />
-</p>
+#### This is a maintained fork of [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action), with assignment approval requests, Discord notifications and buttons, shared pending requests, and optional GitHub App identity. Original assignment commands and scheduled maintenance remain available.
 
-<p align="center">
-  <strong>🎯 <a href="https://action.takanomedev.com/">Generate your workflow file online</a></strong>
-</p>
+If you only need issue assignment commands and scheduled maintenance, without Discord integration, approval requests, or requester messaging, use the original
+[takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action).
 
----
+This fork focuses on assignment automation with notifications and maintainer approval so that you do not miss a contributor that would like to work on an issue and has requested to do so.
 
-This action simplifies issue management for maintainers and contributors, making collaboration more efficient.
-See the list of [features](#features) below for more details.
+**Start here:**
+[Complete setup and deployment](examples/README.md) ·
+[Assignment request workflow](examples/assignment-requests.yml) ·
+[Discord and Cloudflare setup](discord-handler/README.md) ·
+[Optional GitHub App identity](discord-handler/README.md#optional-post-as-a-github-app)
+
+## Getting started
+
+Choose the flow you need:
+
+| Flow | Configuration | Hosting |
+| --- | --- | --- |
+| Automatic assignment only | Prefer the [original action](https://github.com/takanome-dev/assign-issue-action). The basic workflow below remains supported in this fork. | GitHub Actions only. |
+| Requests for GitHub review | Set `require_approval: "true"` and consume the request outputs. | GitHub Actions only; your review integration performs approval. |
+| Discord notifications | Set `require_approval: "true"` and `discord_webhook_url`. | GitHub Actions and a Discord webhook. |
+| Discord approval buttons | Set `discord_buttons_enabled: "true"`. Add `discord_handler_url` for shared tracking and automatic closure of competing requests. | GitHub Actions, a Discord bot, and a Cloudflare Worker. |
+
+For Discord approval buttons, follow the [setup guide](discord-handler/README.md)
+and copy the [complete workflow example](examples/assignment-requests.yml) into the
+repository containing your issues. The example includes optional App authentication;
+leave `ASSIGNMENT_APP_ID` unset to use the workflow's default GitHub token.
+
+Deploy the Worker first, configure matching credentials, then enable the workflow
+on the issue repository's default branch. Replace the action commit placeholder
+with a pushed commit from **this fork** that includes the built `dist/index.mjs`.
+The example's `DISCORD_HANDLER_URL` variable must contain your Worker base URL to
+enable shared tracking. Its sample required label and assignment limit can be adjusted.
 
 ## Features
+
+- Assignment requests from `/assign-me` and recognized contribution phrases, with maintainer approval before assignment.
+- Discord webhook notifications or interactive **Assign**, **Dismiss**, and **View request** controls.
+- GitHub comments confirming receipt and reporting approval or denial, mentioning the requester.
+- Shared pending requests per issue, repeat-request deduplication, and automatic closure of competing requests after approval.
+- Durable retries for failed closure notifications.
+- Optional GitHub App authentication for a branded comment author; personal tokens remain supported.
+
+Original assignment features are also available when approval mode is disabled:
 
 - 📝 Self-assign issues using `/assign-me` command (default)
 - 🗑️ Self-unassign from issues using `/unassign-me` command (default)
@@ -43,9 +58,10 @@ See the list of [features](#features) below for more details.
 - 🔢 Limit the maximum number of issues a user can be assigned to simultaneously (default: 3)
 - 🎯 Per-label assignment limits to encourage progression from beginner to advanced issues (e.g., limit "good first issue" to 2 assignments)
 
-## 💻 Usage
+## Basic automatic assignment
 
-Create a workflow (eg: `.github/workflows/assign.yml` learn more about [Creating a Workflow file](https://docs.github.com/en/actions/using-workflows#creating-a-workflow-file)):
+For automatic assignment without approval or Discord, create
+`.github/workflows/assign.yml` in the repository containing your issues:
 
 ```yaml
 name: Assign Issue
@@ -64,12 +80,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign the user or unassign stale assignments
-        uses: takanome-dev/assign-issue-action@beta
+        uses: scoobs-mystery-bytes/assign-issue-action@<built-commit-sha>
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          maintainers: '' # list of maintainers with comma separated like 'takanome-dev,octocat'
-          # learn more about the inputs below ⬇
+          github_token: ${{ github.token }}
+          maintainers: ''
 ```
+
+Replace `<built-commit-sha>` with a built commit from this fork. Set `maintainers`
+to a comma-separated list of GitHub usernames if maintainer commands are needed.
+For approval requests instead of automatic assignment, use the flows below.
 
 ## Inputs
 
@@ -77,7 +96,7 @@ Various inputs are defined in action.yml to let you configure the action:
 
 | Name                              | Description                                                                                                                                                                                                 | Default                                                                          |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `github_token`                    | PAT for GitHub API authentication. It's automatically generated when the action is running, so no need to add it into your secrets.                                                                         | `${{ github.token }}`                                                            |
+| `github_token`                    | GitHub API token. Defaults to the workflow token; optionally supply a personal or App installation token.                                                                         | `${{ github.token }}`                                                            |
 | `self_assign_cmd`                 | The command that assigns the issue to the one who triggered it                                                                                                                                              | `/assign-me`                                                                     |
 | `self_unassign_cmd`               | The command that unassigns the issue from the user who triggered it, if they are already assigned.                                                                                                          | `/unassign-me`                                                                   |
 | `assign_user_cmd`                 | The command that assigns the user to the issue                                                                                                                                                              | `/assign @<user>`                                                                |
@@ -227,7 +246,7 @@ on:
   issue_comment:
     types: [created]
 permissions:
-  issues: read
+  issues: write
 jobs:
   notify:
     if: ${{ !github.event.issue.pull_request }}
@@ -244,6 +263,7 @@ jobs:
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `discord_buttons_enabled` | `false` | Use bot messages and approval buttons instead of webhooks. |
+| `discord_handler_url` | Empty | Worker HTTPS base URL enabling shared pending requests and automatic closure. |
 | `discord_bot_token` | Empty | Bot token stored as an Actions secret. |
 | `discord_channel_id` | Empty | Channel where the bot posts requests. |
 | `discord_button_secret` | Empty | Shared signing secret, at least 32 characters, stored as an Actions secret. |
@@ -251,6 +271,38 @@ jobs:
 Buttons require the separately deployed Cloudflare Worker in
 [`discord-handler`](discord-handler/README.md). Follow its setup guide before
 enabling button mode. No additional hosting is needed for webhook-only mode.
+
+### Request receipt in button mode
+
+After Discord accepts an eligible request, button mode posts a GitHub issue comment
+mentioning the requester and confirming that maintainers will review it. Failed
+Discord deliveries do not post a receipt. A hidden marker avoids duplicate receipts
+when rerunning the same request. The workflow needs `issues: write` permission.
+Detection-only and webhook modes retain their existing behavior.
+
+### Optional GitHub App comment identity
+
+A GitHub App is optional. With direct bot delivery, request confirmations use the
+workflow token (`github-actions[bot]` by default), while decision comments use the
+Worker's GitHub credential. With `discord_handler_url`, the Worker posts both types
+of comments using its GitHub credential.
+To post both as your own branded App, see [the GitHub App setup](discord-handler/README.md#optional-post-as-a-github-app).
+Configure App authentication where comments are posted: the Worker for shared
+tracking, and both GitHub Actions and the Worker for direct bot delivery. The
+existing token-based setup remains supported.
+
+### Shared pending requests
+
+With Discord buttons enabled, optionally set `discord_handler_url` to your deployed
+Worker's HTTPS base URL. Requests from different contributors are tracked per issue;
+repeat requests reuse an existing pending message. Approving one contributor closes
+other pending requests and mentions each requester on GitHub, explaining that the
+issue was assigned to someone else. Failed cleanup notifications retry automatically.
+
+Deploy the updated Worker before enabling the input, then update the workflow to a
+built commit from this fork. See [multiple-request setup and upgrade instructions](discord-handler/README.md#multiple-requests-for-one-issue).
+Existing messages are not retroactively registered. Direct bot/webhook delivery
+remains supported when this input is omitted.
 
 ## Outputs
 
@@ -270,41 +322,14 @@ The action provides the following outputs that can be used in subsequent workflo
 
 ## ✏️ Contributing
 
-We would love you to contribute to this project, pull requests are welcome!
+We would love you to contribute to this project, pull requests are welcome! If you have requests, we are happy to look at integrating them to work with other applications for integrations. Submit a request https://github.com/scoobs-mystery-bytes/assign-issue-action .
 
-## Related Projects
+## Upstream resources and attribution
 
-- [vouch](https://github.com/mitchellh/vouch) is a community trust management system with allow list and block list support.
+This fork builds on [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action).
+Original authorship and the MIT license are preserved.
+
 
 ## ⚖️ LICENSE
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
-
-### Request receipt in button mode
-
-After Discord accepts an eligible request, button mode posts a GitHub issue comment
-mentioning the requester and confirming that maintainers will review it. Failed
-Discord deliveries do not post a receipt. A hidden marker avoids duplicate receipts
-when rerunning the same request. The workflow needs `issues: write` permission.
-Detection-only and webhook modes retain their existing behavior.
-
-### Optional GitHub App comment identity
-
-A GitHub App is optional. By default, request confirmations use the workflow token
-(`github-actions[bot]`), while decision comments use the Worker's personal-token owner.
-To post both as your own branded App, see [the GitHub App setup](discord-handler/README.md#optional-post-as-a-github-app).
-This requires an App installation and private-key configuration in both GitHub Actions
-and Cloudflare; the existing personal-token setup remains supported.
-
-### Shared pending requests
-
-With Discord buttons enabled, optionally set `discord_handler_url` to your deployed
-Worker's HTTPS base URL. Requests from different contributors are tracked per issue;
-repeat requests reuse an existing pending message. Approving one contributor closes
-other pending requests and mentions each requester on GitHub, explaining that the
-issue was assigned to someone else. Failed cleanup notifications retry automatically.
-
-Deploy the updated Worker before enabling the input, then update the workflow to a
-built commit from this fork. See [multiple-request setup and upgrade instructions](discord-handler/README.md#multiple-requests-for-one-issue).
-Existing messages are not retroactively registered. Direct bot/webhook delivery
-remains supported when this input is omitted.

@@ -1,8 +1,13 @@
 # Cloudflare Discord approval handler
 
-This Worker handles Assign and Dismiss buttons posted by the action. Deploy it
-separately from the action; GitHub Actions sends the message, and Discord sends
-clicks to the Worker's public `/interactions` endpoint.
+This Worker handles Assign and Dismiss buttons and shared pending requests.
+Deploy it separately from the GitHub Action. With `discord_handler_url`, the action
+registers requests at `/requests` and the Worker sends notifications and tracks them;
+without that input, the action sends notifications directly. Discord sends button
+clicks to the public `/interactions` endpoint in both modes.
+
+For the full installation sequence, credential tables, workflow examples, and
+verification steps, start with [setup and deployment](../examples/README.md).
 
 ## Create the Discord application
 
@@ -16,7 +21,10 @@ clicks to the Worker's public `/interactions` endpoint.
 ## Configure Cloudflare
 
 Install the fork's dependencies with `bun install --frozen-lockfile`.
-Edit `discord-handler/wrangler.jsonc`:
+For a new deployment, copy [the generic config](../examples/wrangler.jsonc) into
+`discord-handler/wrangler.jsonc` and replace its placeholders. For an existing
+deployment, edit the existing file and preserve its Worker name and migrations.
+The checked-in local config may contain the maintainer's IDs; use your own values:
 
 | Variable | Value |
 | --- | --- |
@@ -60,8 +68,9 @@ No gateway connection, slash command registration, or privileged intents are nee
 ## Enable the action
 
 In the repository containing the issues, add Actions secrets `DISCORD_BOT_TOKEN`
-and `DISCORD_BUTTON_SECRET`, and an Actions variable `DISCORD_CHANNEL_ID`.
-Use the workflow example under [Optional Discord approval buttons](../README.md#optional-discord-approval-buttons).
+and `DISCORD_BUTTON_SECRET`, and Actions variables `DISCORD_CHANNEL_ID` and `DISCORD_HANDLER_URL` (the Worker
+base URL, enabling shared tracking in the complete example).
+Use the [complete workflow](../examples/assignment-requests.yml) or the workflow example under [Optional Discord approval buttons](../README.md#optional-discord-approval-buttons).
 Commit/push the action and pin `uses:` to that built commit.
 
 The bot token, channel ID, and signing secret must match the Worker. The webhook
@@ -94,7 +103,8 @@ activates approval mode, so requests do not assign themselves automatically.
 The action checks its normal eligibility rules before posting. Clicking Assign is
 an explicit maintainer approval: the handler rechecks the current issue, comment,
 and configured required label; it does not rerun workload limits or add assignment
-assignment labels or welcome comments; it posts the decision comment described above. GitHub changes outside this handler are not serialized with its
+labels or welcome comments. It posts the decision comment described above. GitHub
+changes outside this handler are not serialized with its
 Durable Object, so maintainers should avoid assigning the same issue simultaneously
 through another interface. Existing maintainer commands remain available.
 
@@ -128,9 +138,12 @@ References: [Discord interactions](https://docs.discord.com/developers/interacti
 
 ## Optional: post as a GitHub App
 
-This is optional. The default workflow posts request receipts as `github-actions[bot]`,
-and the Worker posts decisions as the account owning its personal `GITHUB_TOKEN`.
-For a branded identity, configure both components to use a GitHub App installation.
+This is optional. With direct bot delivery, the default workflow posts request receipts
+as `github-actions[bot]`, and the Worker posts decisions as the account owning its
+personal `GITHUB_TOKEN`. With shared tracking (`discord_handler_url`), the Worker
+posts both receipts and decisions using its GitHub credential.
+For a branded identity, configure App authentication on the Worker. In direct-delivery
+mode, configure the workflow too if its receipt should use the same App identity.
 An organization cannot author comments directly; an App uses `<app-slug>[bot]`.
 
 1. In the organization settings, open **Developer settings → GitHub Apps → New GitHub App**.

@@ -1,0 +1,20 @@
+name: Notify assignment requests
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: read
+
+jobs:
+  notify:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: scoobs-mystery-bytes/assign-issue-action@REPLACE_WITH_BUILT_COMMIT_SHA
+        with:
+          require_approval: "true"
+          enable_auto_suggestion: "true"
+          required_label: "ready for development"
+          discord_webhook_url: ${{ secrets.DISCORD_ASSIGNMENT_WEBHOOK_URL }}

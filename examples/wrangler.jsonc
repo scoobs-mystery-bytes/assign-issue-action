@@ -1,0 +1,21 @@
+{
+  "name": "issue-assignment-approvals",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "APPROVALS", "class_name": "AssignmentApprovals" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["AssignmentApprovals"] }
+  ],
+  "vars": {
+    "GITHUB_REPOSITORY": "YOUR_OWNER/YOUR_REPOSITORY",
+    "DISCORD_APPLICATION_ID": "YOUR_DISCORD_APPLICATION_ID",
+    "DISCORD_GUILD_ID": "YOUR_DISCORD_SERVER_ID",
+    "DISCORD_CHANNEL_ID": "YOUR_DISCORD_CHANNEL_ID",
+    "DISCORD_APPROVER_USER_IDS": "YOUR_DISCORD_USER_ID",
+    "DISCORD_APPROVER_ROLE_IDS": "",
+    "GITHUB_REQUIRED_LABEL": "ready for development"
+  }
+}

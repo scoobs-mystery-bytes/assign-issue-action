@@ -1,0 +1,28 @@
+name: Detect assignment requests
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: read
+
+jobs:
+  detect:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: scoobs-mystery-bytes/assign-issue-action@REPLACE_WITH_BUILT_COMMIT_SHA
+        id: request
+        with:
+          require_approval: "true"
+          enable_auto_suggestion: "true"
+          required_label: "ready for development"
+      - name: Record request for manual review
+        if: steps.request.outputs.assignment_requested == 'yes'
+        env:
+          REQUESTER: ${{ steps.request.outputs.requester }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
+          COMMENT_URL: ${{ steps.request.outputs.comment_url }}
+        run: |
+          printf 'Review assignment of issue %s to %s: %s\n' "$ISSUE_NUMBER" "$REQUESTER" "$COMMENT_URL"
