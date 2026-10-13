@@ -1,0 +1,45 @@
+README.md
+  s_c62ea6f41c5c82::t_5ec76f074c6a9b 282-297
+commands/request-assignment.command.ts
+  s_c62ea6f41c5c82::t_fd79f482a69528 77-83
+discord-handler/README.md
+  s_c62ea6f41c5c82::t_4d65120f5e5fb7 40-41,81-85,97,128-206
+discord-handler/__tests__/github-auth.test.ts
+  s_c62ea6f41c5c82::t_1f4be932b11010 1-74
+discord-handler/__tests__/handler.test.ts
+  s_c62ea6f41c5c82::t_7c3f36805aa958 173-174,188-189,199-206,238-240,251-254,260-273
+discord-handler/github-auth.ts
+  s_c62ea6f41c5c82::t_be92f906c299a9 1-83
+discord-handler/handler.ts
+  s_c62ea6f41c5c82::t_2d1f872f5dd0fd 1-5,12,39,157,174-184,192,194-215,217-223,225,227,261,263,359-383
+discord-handler/worker.ts
+  s_c62ea6f41c5c82::t_50b8cec43aff69 30
+discord-handler/wrangler.jsonc
+  s_c62ea6f41c5c82::t_90e6625d8585bb 14-15
+dist/index.mjs
+  s_c62ea6f41c5c82::t_2a8aa1e66e4a5a 42382,42690-42703
+examples/assignment-requests.yml
+  s_c62ea6f41c5c82::t_e7cd2dcc83d884 1-34
+handlers/__tests__/comment-handler.test.ts
+  s_c62ea6f41c5c82::t_e93433d733b557 248-256
+services/github/__tests__/comment-service.test.ts
+  s_c62ea6f41c5c82::t_8271465ccc42bc 41-56
+services/github/comment-service.ts
+  s_c62ea6f41c5c82::t_9b374381fe9880 31-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e7113127821cfc7a7d636cc23f82399bb8ccb78",
+  "prompts": {},
+  "sessions": {
+    "s_c62ea6f41c5c82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba2-48b7-7322-947a-dcb7aa70f452",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
