@@ -1,0 +1,16 @@
+README.md
+  h_a5ff85794783c2 1-3,8
+public/assets/automation_approvals_assign_issue_action.svg
+  h_a5ff85794783c2 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09e30f34a94fbfc25cf3f8d74e67e47cbe98a50b",
+  "prompts": {},
+  "humans": {
+    "h_a5ff85794783c2": {
+      "author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
