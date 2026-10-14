@@ -1,9 +1,11 @@
-<h2 align="center">Assign Issue Action — Automation &amp; Approvals</h2>
+<p align="center">
+  <img src="public/assets/automation_approvals_assign_issue_action.svg" alt="Assign Issue Action — Automation &amp; Approvals logo" width="800" />
+</p>
 
 <p align="center">Issue assignment commands and scheduled maintenance, extended with optional Discord notifications and approval workflows.</p>
 
 
-#### This is a maintained fork of [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action), with assignment approval requests, Discord notifications and buttons, shared pending requests, and optional GitHub App identity. Original assignment commands and scheduled maintenance remain available.
+<b> This is a maintained fork of [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action), with assignment approval requests, Discord notifications and buttons, shared pending requests, and optional GitHub App identity. Original assignment commands and scheduled maintenance remain available.</b>
 
 If you only need issue assignment commands and scheduled maintenance, without Discord integration, approval requests, or requester messaging, use the original
 [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action).
