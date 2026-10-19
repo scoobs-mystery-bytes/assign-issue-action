@@ -1,0 +1,30 @@
+demo-walkthrough.md
+  s_44a58d22c3bc8c::t_72ae83ad107090 40-96
+  s_44a58d22c3bc8c::t_7609969f24e537 1-39,97-109
+DEMO-SCRIPT.md
+  s_27a687612f4982::t_9f782938f36167 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c752779569cf78a942e27ac6080ac788053b647",
+  "prompts": {},
+  "sessions": {
+    "s_27a687612f4982": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15590-3c7b-7af2-be6c-8d73f45a3130",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    },
+    "s_44a58d22c3bc8c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a155af-3db6-7963-9073-f0bc4997fb92",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "scoobs-mystery-bytes <15992407+scoobs-mystery-bytes@users.noreply.github.com>"
+    }
+  }
+}
