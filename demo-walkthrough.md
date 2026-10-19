@@ -37,18 +37,18 @@ The bot replies on the issue to confirm that the request has been sent to the ma
 
 The Discord card shows the repository, issue, contributor's comment, requester, and current status: **Awaiting maintainer approval**. The maintainer can select **View request** to open the original comment.
 
-![Pending approval request in Discord with Assign, Dismiss, and View request buttons](public/assets/approval-discord-pending.png)
+<img src="public/assets/approval-discord-pending.png" alt="Pending approval request in Discord with Assign, Dismiss, and View request buttons" width="500" />
 
 ### 3. Select Assign
 
 The maintainer selects **Assign**. Discord displays a private confirmation, and the request card updates to **Assigned to @axaxayacatl**. The action buttons are no longer shown on the completed card.
 
-![Discord request card updated to Assigned to @axaxayacatl](public/assets/approval-discord-approved.png)
+<img src="public/assets/approval-discord-approved.png" alt="Discord request card updated to Assigned to @axaxayacatl" width="500" />
 
 <details>
 <summary>View the maintainer's private confirmation</summary>
 
-![Private Discord confirmation that the issue was assigned to @axaxayacatl](public/assets/approval-discord-confirmation.png)
+<img src="public/assets/approval-discord-confirmation.png" alt="Private Discord confirmation that the issue was assigned to @axaxayacatl" width="500" />
 
 </details>
 
@@ -56,7 +56,7 @@ The maintainer selects **Assign**. Discord displays a private confirmation, and 
 
 The GitHub issue timeline records the assignment. The bot also posts a comment confirming that the request was approved and the contributor has been assigned.
 
-![GitHub issue showing the request, acknowledgment, assignment event, and approval comment](public/assets/approval-github.png)
+<img src="public/assets/approval-github.png" alt="GitHub issue showing the request, acknowledgment, assignment event, and approval comment" width="500" />
 
 ## Denial walkthrough
 
@@ -74,18 +74,18 @@ The bot acknowledges the request on GitHub and sends it to Discord for review.
 
 The request appears with the status **Awaiting maintainer approval** and the same **Assign**, **Dismiss**, and **View request** controls.
 
-![Discord assignment request awaiting review; a private processing message is visible below the card](public/assets/denial-discord-pending.png)
+<img src="public/assets/denial-discord-pending.png" alt="Discord assignment request awaiting review; a private processing message is visible below the card" width="500" />
 
 ### 3. Select Dismiss
 
 The maintainer selects **Dismiss** to deny the assignment request. Discord displays a private confirmation, and the card updates to show that the request from **@scoobs-mystery-bytes** was dismissed. The action buttons are no longer shown on the completed card.
 
-![Discord card showing that the assignment request from @scoobs-mystery-bytes was dismissed](public/assets/denial-discord-dismissed.png)
+<img src="public/assets/denial-discord-dismissed.png" alt="Discord card showing that the assignment request from @scoobs-mystery-bytes was dismissed" width="500" />
 
 <details>
 <summary>View the maintainer's private confirmation</summary>
 
-![Private Discord confirmation that the assignment request was dismissed](public/assets/denial-discord-confirmation.png)
+<img src="public/assets/denial-discord-confirmation.png" alt="Private Discord confirmation that the assignment request was dismissed" width="500" />
 
 </details>
 
@@ -93,7 +93,7 @@ The maintainer selects **Dismiss** to deny the assignment request. Discord displ
 
 The bot posts a denial comment on the original issue, telling the contributor that they have not been assigned through this request.
 
-![GitHub issue showing the assignment request, review acknowledgment, and denial comment](public/assets/denial-github.png)
+<img src="public/assets/denial-github.png" alt="GitHub issue showing the assignment request, review acknowledgment, and denial comment" width="500" />
 
 ## Try the demo
 
