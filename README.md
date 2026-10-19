@@ -4,6 +4,7 @@
 
 <p align="center">Issue assignment commands and scheduled maintenance, extended with optional Discord notifications and approval workflows.</p>
 
+> **[Explore the demo walkthrough](demo-walkthrough.md)** for screenshots of the GitHub + Discord approval and denial flows, plus steps to try them yourself.
 
 <b> This is a maintained fork of [takanome-dev/assign-issue-action](https://github.com/takanome-dev/assign-issue-action), with assignment approval requests, Discord notifications and buttons, shared pending requests, and optional GitHub App identity. Original assignment commands and scheduled maintenance remain available.</b>
 
